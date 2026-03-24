@@ -3,6 +3,7 @@ const ctx = canvas.getContext("2d");
 
 const objectiveNode = document.getElementById("objective");
 const hintNode = document.getElementById("hint");
+const inventoryNode = document.getElementById("inventory");
 
 const world = {
   width: 3200,
@@ -13,7 +14,7 @@ const world = {
 
 const player = {
   x: 140,
-  y: 0,
+  y: 490,
   width: 46,
   height: 74,
   vx: 0,
@@ -36,12 +37,19 @@ const input = {
   interact: false,
 };
 
+const initialObjective = "Цель: добраться до маяка и понять, почему он не работает.";
+const defaultHint = "Управление: A/D или стрелки, Space для прыжка, E для взаимодействия.";
+
 const gameState = {
   lastTime: 0,
   activeMessage: "Берег пуст, но маяк еще можно спасти.",
-  currentObjective: "Цель: добраться до маяка и понять, почему он не работает.",
+  currentObjective: initialObjective,
   interactionCooldown: 0,
   discovered: new Set(),
+  inventory: {
+    fuel: false,
+  },
+  endingUnlocked: false,
 };
 
 const platforms = [
@@ -77,7 +85,7 @@ const interactables = [
     height: 50,
     title: "Ящики",
     text: "На ящиках метка портовой службы. Тебя явно прислали сюда срочно.",
-    objective: "Цель: подняться к входу в маяк.",
+    objective: "Цель: подняться ко входу в маяк.",
   },
   {
     id: "note",
@@ -100,14 +108,56 @@ const interactables = [
     objective: "Цель: добраться до генераторной и проверить питание.",
   },
   {
+    id: "fuel",
+    x: 2248,
+    y: 374,
+    width: 42,
+    height: 56,
+    title: "Канистра",
+    text: "Почти полная канистра укрыта за балкой. Теперь генератор можно запустить.",
+    objective: "Цель: вернуться к генератору и восстановить питание маяка.",
+    once: true,
+    onInteract() {
+      if (gameState.inventory.fuel) {
+        return null;
+      }
+
+      gameState.inventory.fuel = true;
+      updateInventory();
+
+      return {
+        text: "Ты поднимаешь канистру. Металл холодный, а на боку свежие царапины.",
+        objective: "Цель: вернуться к генератору и восстановить питание маяка.",
+      };
+    },
+  },
+  {
     id: "generator",
     x: 2700,
     y: 190,
     width: 92,
     height: 70,
     title: "Генератор",
-    text: "Панель мертва. Не хватает топлива или предохранителя. На этом первая часть прототипа заканчивается.",
-    objective: "Цель обновлена: найти топливо и снова зажечь маяк.",
+    text: "Панель мертва. Не хватает топлива, чтобы снова зажечь маяк.",
+    objective: "Цель обновлена: найти топливо для резервного генератора.",
+    onInteract() {
+      if (!gameState.inventory.fuel) {
+        return {
+          text: "Панель мертва. Бак пуст, запускать нечего. Где-то рядом должна быть канистра.",
+          objective: "Цель обновлена: найти топливо для резервного генератора.",
+        };
+      }
+
+      gameState.inventory.fuel = false;
+      gameState.endingUnlocked = true;
+      gameState.discovered.add("generator-online");
+      updateInventory();
+
+      return {
+        text: "Двигатель вздрагивает и оживает. Свет маяка прорезает туман: первая часть прототипа завершена.",
+        objective: "Цель выполнена: маяк снова работает. Можно развивать следующую сцену.",
+      };
+    },
   },
 ];
 
@@ -192,7 +242,7 @@ function update(dt) {
   player.y += player.vy * dt;
   resolveVerticalCollisions();
 
-  player.x = Math.max(0, Math.min(world.width - player.width, player.x));
+  player.x = clamp(player.x, 0, world.width - player.width);
 
   camera.x = clamp(
     player.x - canvas.width / 2 + player.width / 2,
@@ -243,23 +293,39 @@ function resolveVerticalCollisions() {
 }
 
 function handleInteraction() {
-  const nearby = interactables.find((item) => distanceToPlayer(item) < 90);
+  const nearby = interactables.find((item) => isInteractableVisible(item) && distanceToPlayer(item) < 90);
 
-  if (nearby) {
-    hintNode.textContent = `E: взаимодействовать с объектом "${nearby.title}". A/D или стрелки для движения, Space для прыжка.`;
-  } else {
-    hintNode.textContent = "Управление: A/D или стрелки, Space для прыжка, E для взаимодействия.";
-  }
+  hintNode.textContent = nearby
+    ? `E: взаимодействовать с объектом "${nearby.title}". A/D или стрелки для движения, Space для прыжка.`
+    : defaultHint;
 
   if (!input.interact || !nearby || gameState.interactionCooldown > 0) {
     return;
   }
 
   gameState.interactionCooldown = 0.25;
-  gameState.activeMessage = nearby.text;
-  gameState.currentObjective = nearby.objective;
-  objectiveNode.textContent = nearby.objective;
+
+  const result = nearby.onInteract ? nearby.onInteract() : {
+    text: nearby.text,
+    objective: nearby.objective,
+  };
+
+  if (!result) {
+    return;
+  }
+
+  gameState.activeMessage = result.text;
+  gameState.currentObjective = result.objective;
+  objectiveNode.textContent = result.objective;
   gameState.discovered.add(nearby.id);
+
+  if (nearby.once) {
+    nearby.hidden = true;
+  }
+}
+
+function isInteractableVisible(item) {
+  return !item.hidden;
 }
 
 function distanceToPlayer(item) {
@@ -268,6 +334,10 @@ function distanceToPlayer(item) {
   const itemCenterX = item.x + item.width / 2;
   const itemCenterY = item.y + item.height / 2;
   return Math.hypot(playerCenterX - itemCenterX, playerCenterY - itemCenterY);
+}
+
+function updateInventory() {
+  inventoryNode.textContent = gameState.inventory.fuel ? "Канистра с топливом" : "Пусто";
 }
 
 function render() {
@@ -355,12 +425,12 @@ function drawLighthouse() {
   ctx.fillRect(900, 320, 50, 85);
   ctx.fillRect(1000, 320, 50, 85);
 
-  ctx.fillStyle = "rgba(247, 219, 148, 0.65)";
-  if (gameState.discovered.has("generator")) {
+  if (gameState.endingUnlocked) {
+    ctx.fillStyle = "rgba(247, 219, 148, 0.78)";
     ctx.beginPath();
     ctx.moveTo(965, 95);
-    ctx.lineTo(1350, -10);
-    ctx.lineTo(1350, 80);
+    ctx.lineTo(1380, -20);
+    ctx.lineTo(1380, 90);
     ctx.closePath();
     ctx.fill();
   }
@@ -387,7 +457,11 @@ function drawPlatforms() {
 
 function drawInteractables() {
   for (const item of interactables) {
-    ctx.fillStyle = gameState.discovered.has(item.id) ? "#d5a95b" : "#9fb7b8";
+    if (!isInteractableVisible(item)) {
+      continue;
+    }
+
+    ctx.fillStyle = getItemColor(item);
     ctx.fillRect(item.x, item.y, item.width, item.height);
 
     if (distanceToPlayer(item) < 90) {
@@ -396,6 +470,18 @@ function drawInteractables() {
       ctx.fillText("E", item.x + item.width / 2 - 6, item.y - 12);
     }
   }
+}
+
+function getItemColor(item) {
+  if (item.id === "fuel") {
+    return "#b14e3f";
+  }
+
+  if (item.id === "generator" && gameState.inventory.fuel) {
+    return "#e4b25f";
+  }
+
+  return gameState.discovered.has(item.id) ? "#d5a95b" : "#9fb7b8";
 }
 
 function drawPlayer() {
@@ -468,8 +554,8 @@ function frame(timestamp) {
   requestAnimationFrame(frame);
 }
 
-player.y = 490;
 objectiveNode.textContent = gameState.currentObjective;
-hintNode.textContent = "Управление: A/D или стрелки, Space для прыжка, E для взаимодействия.";
+hintNode.textContent = defaultHint;
+updateInventory();
 
 requestAnimationFrame(frame);
