@@ -4,12 +4,40 @@ const ctx = canvas.getContext("2d");
 const objectiveNode = document.getElementById("objective");
 const hintNode = document.getElementById("hint");
 const inventoryNode = document.getElementById("inventory");
+const stageNode = document.getElementById("stage");
+const chapterOverlayNode = document.getElementById("chapterOverlay");
+const chapterTitleNode = document.getElementById("chapterTitle");
+const chapterTextNode = document.getElementById("chapterText");
+const chapterButtonNode = document.getElementById("chapterButton");
 
 const world = {
   width: 3200,
   height: 720,
   gravity: 1800,
   seaLevel: 620,
+};
+
+const stageMeta = {
+  shore: {
+    label: "Берег",
+    objective: "Цель: добраться до маяка и понять, почему он не работает.",
+  },
+  lighthouse: {
+    label: "Маяк",
+    objective: "Цель: найти путь к техническому уровню маяка.",
+  },
+  generator: {
+    label: "Генераторная",
+    objective: "Цель: добраться до генератора и восстановить питание.",
+  },
+  ending: {
+    label: "Финал главы",
+    objective: "Цель выполнена: маяк снова работает.",
+  },
+  epilogue: {
+    label: "Следующая вахта",
+    objective: "Новая цель: спуститься внутрь маяка и выяснить, кто оставил остров в таком состоянии.",
+  },
 };
 
 const player = {
@@ -37,19 +65,20 @@ const input = {
   interact: false,
 };
 
-const initialObjective = "Цель: добраться до маяка и понять, почему он не работает.";
 const defaultHint = "Управление: A/D или стрелки, Space для прыжка, E для взаимодействия.";
 
 const gameState = {
   lastTime: 0,
   activeMessage: "Берег пуст, но маяк еще можно спасти.",
-  currentObjective: initialObjective,
+  currentObjective: stageMeta.shore.objective,
   interactionCooldown: 0,
   discovered: new Set(),
   inventory: {
     fuel: false,
   },
   endingUnlocked: false,
+  stage: "shore",
+  chapterOverlayVisible: false,
 };
 
 const platforms = [
@@ -86,6 +115,13 @@ const interactables = [
     title: "Ящики",
     text: "На ящиках метка портовой службы. Тебя явно прислали сюда срочно.",
     objective: "Цель: подняться ко входу в маяк.",
+    onInteract() {
+      advanceStage("shore");
+      return {
+        text: "На ящиках метка портовой службы. Тебя явно прислали сюда срочно.",
+        objective: "Цель: подняться ко входу в маяк.",
+      };
+    },
   },
   {
     id: "note",
@@ -96,6 +132,13 @@ const interactables = [
     title: "Записка",
     text: "Запуск только через резервный генератор. Топливо снова пропало.",
     objective: "Цель: найти путь к техническому уровню маяка.",
+    onInteract() {
+      advanceStage("lighthouse");
+      return {
+        text: "Запуск только через резервный генератор. Топливо снова пропало.",
+        objective: "Цель: найти путь к техническому уровню маяка.",
+      };
+    },
   },
   {
     id: "radio",
@@ -106,6 +149,13 @@ const interactables = [
     title: "Рация",
     text: "Помехи. Последние слова обрываются на фразе: 'Не спускайся туда один'.",
     objective: "Цель: добраться до генераторной и проверить питание.",
+    onInteract() {
+      advanceStage("generator");
+      return {
+        text: "Помехи. Последние слова обрываются на фразе: 'Не спускайся туда один'.",
+        objective: "Цель: добраться до генераторной и проверить питание.",
+      };
+    },
   },
   {
     id: "fuel",
@@ -124,6 +174,7 @@ const interactables = [
 
       gameState.inventory.fuel = true;
       updateInventory();
+      advanceStage("generator");
 
       return {
         text: "Ты поднимаешь канистру. Металл холодный, а на боку свежие царапины.",
@@ -141,6 +192,8 @@ const interactables = [
     text: "Панель мертва. Не хватает топлива, чтобы снова зажечь маяк.",
     objective: "Цель обновлена: найти топливо для резервного генератора.",
     onInteract() {
+      advanceStage("generator");
+
       if (!gameState.inventory.fuel) {
         return {
           text: "Панель мертва. Бак пуст, запускать нечего. Где-то рядом должна быть канистра.",
@@ -152,10 +205,15 @@ const interactables = [
       gameState.endingUnlocked = true;
       gameState.discovered.add("generator-online");
       updateInventory();
+      advanceStage("ending");
+      openChapterOverlay(
+        "Маяк снова горит",
+        "Резервный генератор ожил, и луч рассек туман над островом. Это конец первой сцены и вход в следующую главу."
+      );
 
       return {
         text: "Двигатель вздрагивает и оживает. Свет маяка прорезает туман: первая часть прототипа завершена.",
-        objective: "Цель выполнена: маяк снова работает. Можно развивать следующую сцену.",
+        objective: stageMeta.ending.objective,
       };
     },
   },
@@ -172,7 +230,15 @@ const keys = {
   KeyE: "interact",
 };
 
+chapterButtonNode.addEventListener("click", continueToNextScene);
+
 window.addEventListener("keydown", (event) => {
+  if (gameState.chapterOverlayVisible && event.code === "Enter") {
+    event.preventDefault();
+    continueToNextScene();
+    return;
+  }
+
   const action = keys[event.code];
   if (!action) {
     return;
@@ -222,6 +288,11 @@ function intersects(a, b) {
 function update(dt) {
   gameState.interactionCooldown = Math.max(0, gameState.interactionCooldown - dt);
 
+  if (gameState.chapterOverlayVisible) {
+    player.vx = 0;
+    return;
+  }
+
   const moveAxis = Number(input.right) - Number(input.left);
   player.vx = moveAxis * player.speed;
 
@@ -247,7 +318,7 @@ function update(dt) {
   camera.x = clamp(
     player.x - canvas.width / 2 + player.width / 2,
     0,
-    world.width - canvas.width,
+    world.width - canvas.width
   );
 
   handleInteraction();
@@ -293,7 +364,9 @@ function resolveVerticalCollisions() {
 }
 
 function handleInteraction() {
-  const nearby = interactables.find((item) => isInteractableVisible(item) && distanceToPlayer(item) < 90);
+  const nearby = interactables.find(
+    (item) => isInteractableVisible(item) && distanceToPlayer(item) < 90
+  );
 
   hintNode.textContent = nearby
     ? `E: взаимодействовать с объектом "${nearby.title}". A/D или стрелки для движения, Space для прыжка.`
@@ -305,18 +378,19 @@ function handleInteraction() {
 
   gameState.interactionCooldown = 0.25;
 
-  const result = nearby.onInteract ? nearby.onInteract() : {
-    text: nearby.text,
-    objective: nearby.objective,
-  };
+  const result = nearby.onInteract
+    ? nearby.onInteract()
+    : {
+        text: nearby.text,
+        objective: nearby.objective,
+      };
 
   if (!result) {
     return;
   }
 
-  gameState.activeMessage = result.text;
-  gameState.currentObjective = result.objective;
-  objectiveNode.textContent = result.objective;
+  setActiveMessage(result.text);
+  setObjective(result.objective);
   gameState.discovered.add(nearby.id);
 
   if (nearby.once) {
@@ -325,7 +399,15 @@ function handleInteraction() {
 }
 
 function isInteractableVisible(item) {
-  return !item.hidden;
+  if (item.hidden) {
+    return false;
+  }
+
+  if (gameState.stage === "epilogue" && item.id === "fuel") {
+    return false;
+  }
+
+  return true;
 }
 
 function distanceToPlayer(item) {
@@ -338,6 +420,67 @@ function distanceToPlayer(item) {
 
 function updateInventory() {
   inventoryNode.textContent = gameState.inventory.fuel ? "Канистра с топливом" : "Пусто";
+}
+
+function updateStageLabel() {
+  stageNode.textContent = stageMeta[gameState.stage].label;
+}
+
+function setActiveMessage(message) {
+  gameState.activeMessage = message;
+}
+
+function setObjective(objective) {
+  gameState.currentObjective = objective;
+  objectiveNode.textContent = objective;
+}
+
+function advanceStage(nextStage) {
+  const stageOrder = ["shore", "lighthouse", "generator", "ending", "epilogue"];
+  const currentIndex = stageOrder.indexOf(gameState.stage);
+  const nextIndex = stageOrder.indexOf(nextStage);
+
+  if (nextIndex > currentIndex) {
+    gameState.stage = nextStage;
+    updateStageLabel();
+  }
+}
+
+function openChapterOverlay(title, text) {
+  gameState.chapterOverlayVisible = true;
+  chapterTitleNode.textContent = title;
+  chapterTextNode.textContent = text;
+  chapterOverlayNode.classList.remove("chapter-overlay--hidden");
+  hintNode.textContent = "Enter: перейти к следующей сцене.";
+}
+
+function closeChapterOverlay() {
+  gameState.chapterOverlayVisible = false;
+  chapterOverlayNode.classList.add("chapter-overlay--hidden");
+  hintNode.textContent = defaultHint;
+}
+
+function continueToNextScene() {
+  if (!gameState.chapterOverlayVisible) {
+    return;
+  }
+
+  closeChapterOverlay();
+  gameState.stage = "epilogue";
+  updateStageLabel();
+  player.x = 980;
+  player.y = 536;
+  player.vx = 0;
+  player.vy = 0;
+  setObjective(stageMeta.epilogue.objective);
+  setActiveMessage(
+    "Маяк ожил, но внутри все еще слишком тихо. След ведет вниз, в служебные помещения под башней."
+  );
+  camera.x = clamp(
+    player.x - canvas.width / 2 + player.width / 2,
+    0,
+    world.width - canvas.width
+  );
 }
 
 function render() {
@@ -377,6 +520,11 @@ function drawSky() {
     ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + i * 0.01})`;
     ctx.fillRect(120 * i, 110 + i * 30, 250, 12);
   }
+
+  if (gameState.stage === "epilogue") {
+    ctx.fillStyle = "rgba(255, 221, 150, 0.08)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 }
 
 function drawSea() {
@@ -384,7 +532,8 @@ function drawSea() {
   ctx.fillRect(0, world.seaLevel, world.width, world.height - world.seaLevel);
 
   for (let i = 0; i < 18; i += 1) {
-    ctx.fillStyle = i % 2 === 0 ? "rgba(104, 155, 181, 0.28)" : "rgba(138, 186, 201, 0.18)";
+    ctx.fillStyle =
+      i % 2 === 0 ? "rgba(104, 155, 181, 0.28)" : "rgba(138, 186, 201, 0.18)";
     ctx.fillRect(i * 220, world.seaLevel + 18 + (i % 3) * 8, 130, 6);
   }
 }
@@ -464,7 +613,7 @@ function drawInteractables() {
     ctx.fillStyle = getItemColor(item);
     ctx.fillRect(item.x, item.y, item.width, item.height);
 
-    if (distanceToPlayer(item) < 90) {
+    if (distanceToPlayer(item) < 90 && !gameState.chapterOverlayVisible) {
       ctx.fillStyle = "rgba(255, 243, 201, 0.9)";
       ctx.font = "22px Georgia";
       ctx.fillText("E", item.x + item.width / 2 - 6, item.y - 12);
@@ -479,6 +628,10 @@ function getItemColor(item) {
 
   if (item.id === "generator" && gameState.inventory.fuel) {
     return "#e4b25f";
+  }
+
+  if (item.id === "generator" && gameState.endingUnlocked) {
+    return "#f0c67a";
   }
 
   return gameState.discovered.has(item.id) ? "#d5a95b" : "#9fb7b8";
@@ -554,8 +707,10 @@ function frame(timestamp) {
   requestAnimationFrame(frame);
 }
 
-objectiveNode.textContent = gameState.currentObjective;
+setObjective(gameState.currentObjective);
 hintNode.textContent = defaultHint;
 updateInventory();
+updateStageLabel();
+closeChapterOverlay();
 
 requestAnimationFrame(frame);

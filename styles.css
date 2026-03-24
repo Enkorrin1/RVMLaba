@@ -35,7 +35,7 @@ body {
 
 .hud {
   display: grid;
-  grid-template-columns: minmax(220px, 1.1fr) minmax(180px, 0.55fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.5fr) minmax(200px, 0.6fr) minmax(320px, 1.1fr);
   gap: 20px;
   align-items: end;
 }
@@ -75,6 +75,7 @@ body {
   text-transform: uppercase;
 }
 
+.hud__stage,
 .hud__inventory,
 .hud__objective,
 .hud__hint {
@@ -82,6 +83,7 @@ body {
   line-height: 1.45;
 }
 
+.hud__stage,
 .hud__inventory {
   font-size: 1.05rem;
 }
@@ -106,12 +108,81 @@ canvas {
   background: linear-gradient(180deg, #214865 0%, #0c1820 72%);
 }
 
+.chapter-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 8, 13, 0.74);
+  backdrop-filter: blur(10px);
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.chapter-overlay--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chapter-overlay__card {
+  width: min(620px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(228, 178, 95, 0.3);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(17, 28, 39, 0.96), rgba(6, 13, 19, 0.94)),
+    radial-gradient(circle at top, rgba(228, 178, 95, 0.1), transparent 52%);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+.chapter-overlay__eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.chapter-overlay__title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.chapter-overlay__text {
+  margin: 16px 0 0;
+  color: var(--text-soft);
+  line-height: 1.6;
+  font-size: 1.05rem;
+}
+
+.chapter-overlay__button {
+  margin-top: 24px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f0c67a, #cf9653);
+  color: #1e160d;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(207, 150, 83, 0.32);
+}
+
+.chapter-overlay__hint {
+  margin: 14px 0 0;
+  color: rgba(237, 245, 238, 0.7);
+  font-size: 0.95rem;
+}
+
 @media (max-width: 1100px) {
   .hud {
     grid-template-columns: 1fr 1fr;
   }
 
-  .hud__title {
+  .hud__title,
+  .hud__card:last-child {
     grid-column: 1 / -1;
   }
 }
@@ -123,5 +194,13 @@ canvas {
 
   .hud {
     grid-template-columns: 1fr;
+  }
+
+  .chapter-overlay {
+    padding: 14px;
+  }
+
+  .chapter-overlay__card {
+    padding: 22px 18px;
   }
 }
