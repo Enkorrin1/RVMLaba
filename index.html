@@ -7,42 +7,28 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="page">
-    <section class="hud">
-      <div class="hud__title">
-        <p class="hud__eyebrow">Prototype Build</p>
-        <h1>Last Keeper</h1>
-      </div>
-      <div class="hud__card hud__card--compact">
-        <p class="hud__label">Этап</p>
-        <p id="stage" class="hud__stage">Берег</p>
-      </div>
-      <div class="hud__card hud__card--compact">
-        <p class="hud__label">Инвентарь</p>
-        <p id="inventory" class="hud__inventory">Пусто</p>
-      </div>
-      <div class="hud__card">
-        <p id="objective" class="hud__objective">Цель: добраться до маяка и понять, почему он не работает.</p>
-        <p id="hint" class="hud__hint">Управление: A/D или стрелки, Space для прыжка, E для взаимодействия.</p>
-      </div>
-    </section>
+  <main class="game-shell">
+    <div class="ui-state" aria-hidden="true" hidden>
+      <p id="stage">Берег</p>
+      <p id="inventory">Пусто</p>
+      <p id="objective">Цель: добраться до маяка и понять, почему он не работает.</p>
+      <p id="hint">Управление: A/D или стрелки для движения, I для инвентаря, E для взаимодействия.</p>
+    </div>
 
-    <section class="game-shell">
-      <canvas id="game" width="1280" height="720" aria-label="Игровая сцена Last Keeper"></canvas>
+    <canvas id="game" width="1280" height="720" aria-label="Игровая сцена Last Keeper"></canvas>
 
-      <section id="chapterOverlay" class="chapter-overlay chapter-overlay--hidden" aria-live="polite">
-        <div class="chapter-overlay__card">
-          <p class="chapter-overlay__eyebrow">Глава завершена</p>
-          <h2 id="chapterTitle" class="chapter-overlay__title">Маяк снова горит</h2>
-          <p id="chapterText" class="chapter-overlay__text">
-            Луч маяка прорезал туман. Остров не стал безопаснее, но теперь у тебя есть путь дальше.
-          </p>
-          <button id="chapterButton" class="chapter-overlay__button" type="button">
-            Продолжить
-          </button>
-          <p class="chapter-overlay__hint">Нажми Enter или кнопку, чтобы перейти к следующей сцене.</p>
-        </div>
-      </section>
+    <section id="chapterOverlay" class="chapter-overlay chapter-overlay--hidden" aria-live="polite">
+      <div class="chapter-overlay__card">
+        <p class="chapter-overlay__eyebrow">Глава завершена</p>
+        <h2 id="chapterTitle" class="chapter-overlay__title">Маяк снова горит</h2>
+        <p id="chapterText" class="chapter-overlay__text">
+          Луч маяка прорезал туман. Остров не стал безопаснее, но теперь у тебя есть путь дальше.
+        </p>
+        <button id="chapterButton" class="chapter-overlay__button" type="button">
+          Продолжить
+        </button>
+        <p class="chapter-overlay__hint">Нажми Enter или кнопку, чтобы перейти к следующей сцене.</p>
+      </div>
     </section>
   </main>
 
