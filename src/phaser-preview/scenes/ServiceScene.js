@@ -15,8 +15,6 @@ import {
 import { PreviewSceneBase } from "./PreviewSceneBase.js";
 import { getPreviewSession } from "../state/previewSession.js";
 
-const Phaser = window.Phaser;
-
 export class ServiceScene extends PreviewSceneBase {
   constructor() {
     super("service-preview");
@@ -49,7 +47,7 @@ export class ServiceScene extends PreviewSceneBase {
     this.syncHud();
     this.playSceneIntro(
       "Служебный уровень",
-      "Под башней всё звучит глуше: гул металла, влажный воздух и ощущение, что здесь работали совсем недавно."
+      "Под башней всё звучит глуше: металл отзывается эхом, в воздухе висит сырость, а каждый рычаг и люк выглядят так, будто ими пользовались совсем недавно."
     );
   }
 
@@ -118,14 +116,28 @@ export class ServiceScene extends PreviewSceneBase {
         this.session.serviceProgress.consoleUsed = true;
         this.openOverlay(
           "Сервисный пульт",
-          "На экране сервисного пульта мигает схема маяка. Восточный тоннель заблокирован вручную с другой стороны."
+          "Экран ожил и показывает схему маяка. Восточный тоннель отмечен красным: проход заблокирован цепью уже с другой стороны."
         );
-        this.overlayContent.add(this.add.text(0, 24, "Блокировка тоннеля отмечена красным на схеме.", {
-          fontFamily: "Georgia, serif",
-          fontSize: "22px",
-          color: "#dce6e9",
-          align: "center",
-        }).setOrigin(0.5));
+
+        this.overlayContent.add([
+          this.add.rectangle(0, 20, 430, 200, 0x15202a, 0.95).setStrokeStyle(3, 0x89b7c5, 0.18),
+          this.add.rectangle(-72, -8, 160, 96, 0x0d151b, 1).setStrokeStyle(2, 0x7bc6d3, 0.24),
+          this.add.rectangle(84, 18, 138, 132, 0x101920, 1).setStrokeStyle(2, 0xe1bb73, 0.18),
+          this.add.line(-72, -8, -58, -18, 18, -18, 18, 36, 0x8de0cf, 0.9).setLineWidth(3),
+          this.add.line(84, 18, 38, -10, 138, -10, 138, 58, 0xd46462, 0.9).setLineWidth(4),
+          this.add.circle(126, 58, 10, 0xd46462, 0.8),
+          this.add.text(-72, 74, "Схема внутренних линий", {
+            fontFamily: "Georgia, serif",
+            fontSize: "17px",
+            color: "#dce6e9",
+          }).setOrigin(0.5),
+          this.add.text(84, 98, "Тоннель заблокирован\nс восточной стороны", {
+            fontFamily: "Georgia, serif",
+            fontSize: "18px",
+            color: "#eadcc1",
+            align: "center",
+          }).setOrigin(0.5),
+        ]);
         this.syncHud();
         break;
       case "sealed-door":
@@ -135,11 +147,11 @@ export class ServiceScene extends PreviewSceneBase {
           if (this.session.selectedItemId === "screwdriver") {
             this.openScrewPanel({
               title: "Щиток на цепи",
-              description: "Сними защитный щиток отвёрткой, чтобы добраться до цепи и механизма запора.",
+              description: "Сними защитный щиток отвёрткой, чтобы добраться до цепи и запора на двери в тоннель.",
               accent: 0x4c4138,
               onComplete: () => {
                 this.session.puzzleState.serviceDoor.panelOpened = true;
-                this.showNarration("Щиток снят. Теперь видно саму цепь и замок прохода.");
+                this.showNarration("Щиток снят. Теперь видно саму цепь и механизм запора.");
               },
             });
           } else {
@@ -164,7 +176,17 @@ export class ServiceScene extends PreviewSceneBase {
           break;
         }
 
-        this.showNarration("Дверь удерживается цепью с другой стороны. Сначала стоит собрать больше следов в этой комнате.");
+        if (!this.session.serviceProgress.logbookRead) {
+          this.showNarration("Сначала стоит дочитать журнал. В нём могут быть ключевые следы об этом проходе.");
+          break;
+        }
+
+        if (!this.session.serviceProgress.consoleUsed) {
+          this.showNarration("Прежде чем уходить в тоннель, разберись с сервисным пультом и схемой маяка.");
+          break;
+        }
+
+        this.showNarration("Дверь уже можно освободить, но сначала стоит собрать все следы на этом уровне.");
         break;
       default:
         break;
@@ -174,21 +196,22 @@ export class ServiceScene extends PreviewSceneBase {
   openConsoleBatteryOverlay() {
     this.openOverlay(
       "Питание сервисного пульта",
-      "Возьми батарею, вставь её в гнездо и затем запусти пульт нажатием на клавишу питания."
+      "Сначала возьми батарею, затем вставь её в разъём и только после этого подай питание кнопкой запуска."
     );
 
-    const housing = this.add.rectangle(0, 18, 420, 220, 0x243039, 0.96).setStrokeStyle(3, 0x9bb1bb, 0.22);
-    const screen = this.add.rectangle(0, -28, 160, 62, 0x0f181d, 1).setStrokeStyle(2, 0x7bc6d3, 0.18);
-    const slotGlow = this.add.rectangle(0, 56, 110, 82, 0xe1bb73, 0.06).setStrokeStyle(3, 0xe1bb73, 0.28);
-    const slot = this.add.rectangle(0, 56, 98, 70, 0x121a20, 1).setStrokeStyle(3, 0xe1bb73, 0.28);
-    const bootButton = this.add.circle(144, 58, 20, 0x24343c, 1).setStrokeStyle(3, 0x8ea4af, 0.28);
-    const bootRing = this.add.circle(144, 58, 8, 0x86b7c0, 0.22);
-    const label = this.add.text(0, 128, "Гнездо батареи", {
+    const housing = this.add.rectangle(0, 18, 450, 242, 0x243039, 0.96).setStrokeStyle(3, 0x9bb1bb, 0.22);
+    const screenGlow = this.add.rectangle(0, -28, 176, 80, 0x7bc6d3, 0.06);
+    const screen = this.add.rectangle(0, -28, 164, 70, 0x0f181d, 1).setStrokeStyle(2, 0x7bc6d3, 0.2);
+    const slotGlow = this.add.rectangle(-12, 62, 126, 92, 0xe1bb73, 0.08).setStrokeStyle(3, 0xe1bb73, 0.22);
+    const slot = this.add.rectangle(-12, 62, 110, 76, 0x121a20, 1).setStrokeStyle(3, 0xe1bb73, 0.32);
+    const bootButton = this.add.circle(158, 62, 22, 0x24343c, 1).setStrokeStyle(3, 0x8ea4af, 0.28);
+    const bootRing = this.add.circle(158, 62, 10, 0x86b7c0, 0.22);
+    const slotLabel = this.add.text(-12, 126, "Разъём батареи", {
       fontFamily: "Georgia, serif",
       fontSize: "18px",
       color: "#dce6e9",
     }).setOrigin(0.5);
-    const bootText = this.add.text(144, 92, "Пуск", {
+    const bootText = this.add.text(158, 98, "Пуск", {
       fontFamily: "Georgia, serif",
       fontSize: "15px",
       color: "#dce6e9",
@@ -200,103 +223,153 @@ export class ServiceScene extends PreviewSceneBase {
       fontStyle: "bold",
     }).setOrigin(0.5);
 
-    const batteryToken = this.add.container(-150, 62).setSize(70, 90);
-    const batteryBody = this.add.rectangle(0, 0, 34, 56, 0x49677d, 1).setStrokeStyle(3, 0xd7c17b, 0.44);
-    const batteryCap = this.add.rectangle(0, -30, 14, 8, 0xd7c17b, 1);
-    const batteryMark = this.add.rectangle(0, 0, 14, 26, 0x233039, 0.62);
-    const batteryHint = this.add.text(0, 48, "Батарея", {
+    const batteryToken = this.add.container(-152, 58).setSize(82, 104);
+    const batteryBody = this.add.rectangle(0, 0, 42, 66, 0x49677d, 1).setStrokeStyle(3, 0xd7c17b, 0.44);
+    const batteryCap = this.add.rectangle(0, -36, 14, 8, 0xd7c17b, 1);
+    const batteryMark = this.add.rectangle(0, 0, 16, 34, 0x233039, 0.62);
+    const batteryTitle = this.add.text(0, 50, "Батарея", {
       fontFamily: "Georgia, serif",
-      fontSize: "15px",
+      fontSize: "16px",
       color: "#dce6e9",
     }).setOrigin(0.5);
-    batteryToken.add([batteryBody, batteryCap, batteryMark, batteryHint]);
-    batteryToken.setInteractive(new Phaser.Geom.Rectangle(-35, -45, 70, 90), Phaser.Geom.Rectangle.Contains);
-    this.input.setDraggable(batteryToken);
+    batteryToken.add([batteryBody, batteryCap, batteryMark, batteryTitle]);
 
+    let batteryPicked = false;
     let batteryInserted = false;
-    let batteryLocked = false;
-    const startPosition = { x: -150, y: 62 };
-    const slotBounds = new Phaser.Geom.Rectangle(-55, 16, 110, 82);
+    let booting = false;
 
-    batteryToken.on("drag", (_pointer, dragX, dragY) => {
-      if (batteryLocked) {
-        return;
-      }
-      batteryToken.x = dragX;
-      batteryToken.y = dragY;
-      const hovered = Phaser.Geom.Rectangle.Contains(slotBounds, dragX, dragY);
-      slotGlow.setFillStyle(0xe1bb73, hovered ? 0.12 : 0.06);
-    });
+    const updateBatteryVisual = () => {
+      batteryBody.setStrokeStyle(3, batteryPicked ? 0xf2d48f : 0xd7c17b, batteryPicked ? 0.9 : 0.44);
+      slotGlow.setFillStyle(0xe1bb73, batteryInserted ? 0.18 : (batteryPicked ? 0.14 : 0.08));
+    };
 
-    batteryToken.on("dragend", () => {
-      if (batteryLocked) {
-        return;
-      }
-
-      if (Phaser.Geom.Rectangle.Contains(slotBounds, batteryToken.x, batteryToken.y)) {
-        batteryInserted = true;
-        batteryLocked = true;
-        slotGlow.setFillStyle(0xe1bb73, 0.18);
+    this.createOverlayRectHotspot(-152, 58, 92, 112, {
+      pointerover: () => {
+        if (!batteryInserted) {
+          batteryBody.setStrokeStyle(3, 0xf2d48f, 0.74);
+        }
+      },
+      pointerout: () => updateBatteryVisual(),
+      pointerdown: () => {
+        if (batteryInserted || booting) {
+          return;
+        }
+        batteryPicked = true;
+        updateBatteryVisual();
         this.tweens.add({
           targets: batteryToken,
-          x: 0,
-          y: 56,
+          scaleX: 1.06,
+          scaleY: 1.06,
+          duration: 120,
+          yoyo: true,
+          ease: "quad.out",
+        });
+        this.showMessage("Батарея в руке. Теперь вставь её в разъём по центру.");
+      },
+    });
+
+    this.createOverlayRectHotspot(-12, 62, 126, 92, {
+      pointerover: () => {
+        if (!batteryInserted) {
+          slotGlow.setFillStyle(0xe1bb73, batteryPicked ? 0.18 : 0.11);
+        }
+      },
+      pointerout: () => updateBatteryVisual(),
+      pointerdown: () => {
+        if (batteryInserted) {
+          this.showMessage("Батарея уже вошла в разъём.");
+          return;
+        }
+        if (!batteryPicked) {
+          this.showMessage("Сначала возьми батарею слева.");
+          return;
+        }
+
+        batteryInserted = true;
+        batteryPicked = false;
+        updateBatteryVisual();
+        slotLabel.setText("Батарея на месте");
+        batteryTitle.setText("Установлена");
+        this.tweens.add({
+          targets: batteryToken,
+          x: -12,
+          y: 62,
           duration: 220,
           ease: "quad.out",
         });
         this.showMessage("Батарея вошла в разъём. Теперь подай питание кнопкой справа.");
-      } else {
-        slotGlow.setFillStyle(0xe1bb73, 0.06);
-        this.tweens.add({
-          targets: batteryToken,
-          x: startPosition.x,
-          y: startPosition.y,
-          duration: 180,
-          ease: "quad.out",
-        });
-      }
+      },
     });
 
-    bootButton.setInteractive();
-    bootButton.on("pointerdown", () => {
-      if (!batteryInserted) {
-        this.showMessage("Сначала вставь батарею в гнездо.");
-        return;
-      }
+    this.createOverlayRectHotspot(158, 62, 58, 58, {
+      pointerover: () => {
+        if (!booting) {
+          bootButton.setStrokeStyle(3, 0xd9c58d, 0.62);
+        }
+      },
+      pointerout: () => {
+        if (!booting) {
+          bootButton.setStrokeStyle(3, 0x8ea4af, 0.28);
+        }
+      },
+      pointerdown: () => {
+        if (booting) {
+          return;
+        }
+        if (!batteryInserted) {
+          this.showMessage("Сначала вставь батарею в гнездо.");
+          return;
+        }
 
-      this.tweens.add({
-        targets: [bootButton, bootRing],
-        scaleX: 0.88,
-        scaleY: 0.88,
-        duration: 90,
-        yoyo: true,
-        ease: "quad.inOut",
-      });
-      screenText.setText("BOOTING");
-      screenText.setColor("#9fd9e4");
-      this.time.delayedCall(260, () => {
-        screenText.setText("ONLINE");
-        screenText.setColor("#b6f1c4");
-        this.session.puzzleState.serviceConsole.batteryInstalled = true;
-        this.removeInventoryItem("battery");
-        this.session.serviceProgress.consoleUsed = false;
-        this.showNarration("Батарея встала в разъём. Пульт ожил и теперь показывает схему внутренних проходов.");
-        this.time.delayedCall(360, () => {
-          this.closeOverlay();
-          this.syncHud();
+        booting = true;
+        screenText.setText("BOOTING");
+        screenText.setColor("#9fd9e4");
+        bootButton.setStrokeStyle(3, 0xd9c58d, 0.9);
+        this.tweens.add({
+          targets: [bootButton, bootRing],
+          scaleX: 0.88,
+          scaleY: 0.88,
+          duration: 90,
+          yoyo: true,
+          ease: "quad.inOut",
         });
-      });
+
+        this.time.delayedCall(260, () => {
+          screenText.setText("ONLINE");
+          screenText.setColor("#b6f1c4");
+          this.session.puzzleState.serviceConsole.batteryInstalled = true;
+          this.removeInventoryItem("battery");
+          this.session.serviceProgress.consoleUsed = false;
+          this.showNarration("Батарея встала в разъём. Пульт ожил и теперь показывает схему внутренних проходов.");
+          this.time.delayedCall(360, () => {
+            this.closeOverlay();
+            this.syncHud();
+          });
+        });
+      },
     });
 
     this.tweens.add({
-      targets: slotGlow,
-      alpha: 0.2,
-      duration: 720,
+      targets: [slotGlow, screenGlow],
+      alpha: 0.22,
+      duration: 760,
       yoyo: true,
       repeat: -1,
       ease: "sine.inOut",
     });
 
-    this.overlayContent.add([housing, screen, slotGlow, slot, bootButton, bootRing, label, bootText, screenText, batteryToken]);
+    this.overlayContent.add([
+      housing,
+      screenGlow,
+      screen,
+      slotGlow,
+      slot,
+      bootButton,
+      bootRing,
+      slotLabel,
+      bootText,
+      screenText,
+      batteryToken,
+    ]);
   }
 }

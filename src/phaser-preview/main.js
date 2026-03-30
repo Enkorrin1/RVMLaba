@@ -5,6 +5,7 @@ import { ServiceScene } from "./scenes/ServiceScene.js";
 import { TunnelScene } from "./scenes/TunnelScene.js";
 import { PierScene } from "./scenes/PierScene.js";
 import { BayScene } from "./scenes/BayScene.js";
+import { installPreviewDiagnostics } from "./dev/previewDiagnostics.js";
 
 const Phaser = window.Phaser;
 const parent = document.getElementById("game");
@@ -60,4 +61,5 @@ function createPreviewGame() {
 }
 
 window.__LAST_KEEPER_PHASER_PREVIEW__?.destroy(true);
+installPreviewDiagnostics();
 window.__LAST_KEEPER_PHASER_PREVIEW__ = createPreviewGame();

@@ -6,6 +6,7 @@
   PLAYER_SPEED,
 } from "../data/wakeData.js";
 import { createItemIcon } from "../render/wakeArt.js";
+import { publishPreviewDiagnostics } from "../dev/previewDiagnostics.js";
 
 const Phaser = window.Phaser;
 
@@ -698,6 +699,8 @@ export class PreviewSceneBase extends Phaser.Scene {
         ? `Инвентарь: ${this.session.inventory.map((itemId) => ITEM_DEFINITIONS[itemId].label).join(", ")}`
         : "Инвентарь: пусто";
     }
+
+    publishPreviewDiagnostics(this, this.session);
   }
 
   getStageLabel() {

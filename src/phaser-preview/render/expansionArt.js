@@ -9,45 +9,77 @@ import {
 
 export function buildServiceEnvironment(scene) {
   scene.serviceDust = [];
+  scene.serviceSteam = [];
 
-  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, SERVICE_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x061018);
-  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, 208, SERVICE_WORLD_WIDTH, 356, 0x17232b, 0.98);
-  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, 254, SERVICE_WORLD_WIDTH, 260, 0x26343d, 0.5);
-  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, 654, SERVICE_WORLD_WIDTH, 132, 0x0d151c, 1);
+  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, SERVICE_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x050c13);
+  scene.add.ellipse(1240, 126, 760, 220, 0x43657f, 0.08);
+  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, 184, SERVICE_WORLD_WIDTH, 360, 0x0f1c24, 0.98);
+  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, 262, SERVICE_WORLD_WIDTH, 260, 0x1b2a34, 0.64);
+  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, 654, SERVICE_WORLD_WIDTH, 132, 0x07131a, 1);
+  scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, 624, SERVICE_WORLD_WIDTH, 22, 0x19455a, 0.16);
 
-  const room = scene.add.container(1200, 394).setDepth(2);
-  room.add([
-    scene.add.ellipse(0, 214, 1180, 64, 0x000000, 0.24),
-    scene.add.rectangle(0, 0, 1120, 390, 0x2c3a43, 1).setStrokeStyle(6, 0x141a1f, 0.72),
-    scene.add.rectangle(0, 0, 1038, 326, 0x4a5a63, 0.18).setStrokeStyle(2, 0xc8d7dd, 0.08),
-    scene.add.rectangle(0, 176, 1120, 44, 0x20272d, 1),
+  const chamber = scene.add.container(1200, 392).setDepth(2);
+  chamber.add([
+    scene.add.ellipse(0, 220, 1210, 72, 0x000000, 0.28),
+    scene.add.rectangle(0, 0, 1160, 402, 0x24333c, 1).setStrokeStyle(6, 0x0f1519, 0.82),
+    scene.add.rectangle(0, -4, 1084, 334, 0x44555e, 0.18).setStrokeStyle(2, 0xb9c8cf, 0.08),
+    scene.add.rectangle(0, 178, 1160, 44, 0x1c252b, 1),
+    scene.add.rectangle(0, -168, 1160, 30, 0x10171d, 0.74),
   ]);
 
   for (let index = 0; index < 8; index += 1) {
-    room.add(scene.add.rectangle(-448 + index * 128, -4, 10, 332, 0x36454e, 0.42));
+    chamber.add(scene.add.rectangle(-470 + index * 134, -6, 12, 340, 0x34444d, 0.42));
   }
+
+  for (let index = 0; index < 5; index += 1) {
+    chamber.add(scene.add.rectangle(-390 + index * 188, -146, 156, 8, 0x56656b, 0.28));
+  }
+
+  const shaftLight = scene.add.ellipse(1220, 258, 360, 250, 0xc6d6c7, 0.05).setDepth(3);
+  const floorWash = scene.add.ellipse(1220, 578, 560, 70, 0xb0d7dc, 0.05).setDepth(3);
+  scene.serviceLampPulse = scene.add.ellipse(1460, 516, 164, 80, 0x87d3df, 0.05).setDepth(6);
+  scene.serviceDoorLamp = scene.add.circle(1666, 454, 16, 0xd8ba74, 0.12).setDepth(8);
+  scene.serviceDoorLampHalo = scene.add.circle(1666, 454, 44, 0xd8ba74, 0.04).setDepth(7);
 
   createServiceProps(scene);
 
-  for (let index = 0; index < 16; index += 1) {
+  for (let index = 0; index < 22; index += 1) {
     const mote = scene.add.circle(
-      720 + Math.random() * 900,
-      190 + Math.random() * 280,
-      1 + Math.random() * 2.4,
-      0xd7d1b4,
-      0.06 + Math.random() * 0.05
+      720 + Math.random() * 960,
+      170 + Math.random() * 330,
+      1 + Math.random() * 2.8,
+      0xe0d7be,
+      0.05 + Math.random() * 0.05
     ).setDepth(6);
-    mote.speedX = -0.05 + Math.random() * 0.1;
+    mote.speedX = -0.08 + Math.random() * 0.16;
     mote.speedY = 0.04 + Math.random() * 0.08;
-    mote.phase = index * 0.44;
+    mote.phase = index * 0.38;
     scene.serviceDust.push(mote);
   }
+
+  for (let index = 0; index < 4; index += 1) {
+    const steam = scene.add.ellipse(
+      1360 + index * 28,
+      486 + index * 6,
+      28 + index * 8,
+      16 + index * 4,
+      0xc8e3ea,
+      0.04
+    ).setDepth(7);
+    steam.baseX = steam.x;
+    steam.baseY = steam.y;
+    steam.phase = index * 0.7;
+    scene.serviceSteam.push(steam);
+  }
+
+  shaftLight.setDepth(4);
+  floorWash.setDepth(4);
 }
 
 export function createServiceGround(scene) {
   scene.physics.world.setBounds(0, 0, SERVICE_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT);
   scene.platforms = scene.physics.add.staticGroup();
-  const ground = scene.add.rectangle(1200, PREVIEW_GROUND_Y + 60, 1120, 120, 0x39464a, 0);
+  const ground = scene.add.rectangle(1200, PREVIEW_GROUND_Y + 60, 1160, 120, 0x39464a, 0);
   scene.physics.add.existing(ground, true);
   scene.platforms.add(ground);
 }
@@ -57,42 +89,93 @@ export function updateServiceAmbient(scene, time) {
     mote.x += mote.speedX;
     mote.y += mote.speedY + Math.sin(time * 0.0011 + mote.phase) * 0.08;
     if (mote.y > 560) {
-      mote.y = 180;
+      mote.y = 176;
     }
-    if (mote.x < 680) {
-      mote.x = 1620;
+    if (mote.x < 670) {
+      mote.x = 1730;
     }
-    if (mote.x > 1620) {
-      mote.x = 680;
+    if (mote.x > 1730) {
+      mote.x = 670;
     }
   }
 
+  for (const steam of scene.serviceSteam) {
+    steam.x = steam.baseX + Math.sin(time * 0.0017 + steam.phase) * 10;
+    steam.y = steam.baseY - Math.abs(Math.sin(time * 0.0015 + steam.phase)) * 16;
+    steam.alpha = 0.025 + Math.sin(time * 0.0019 + steam.phase) * 0.02 + 0.03;
+    steam.scaleX = 1 + Math.sin(time * 0.0013 + steam.phase) * 0.16;
+  }
+
   if (scene.consoleGlow) {
-    scene.consoleGlow.alpha = 0.04 + Math.sin(time * 0.0021) * 0.03;
+    scene.consoleGlow.alpha = 0.06 + Math.sin(time * 0.0021) * 0.035;
+  }
+
+  if (scene.serviceLampPulse) {
+    scene.serviceLampPulse.alpha = 0.04 + Math.sin(time * 0.0018) * 0.03;
+  }
+
+  if (scene.serviceDoorLamp) {
+    scene.serviceDoorLamp.alpha = 0.12 + Math.sin(time * 0.0026) * 0.08;
+  }
+
+  if (scene.serviceDoorLampHalo) {
+    scene.serviceDoorLampHalo.alpha = 0.03 + Math.sin(time * 0.0021) * 0.02;
   }
 }
 
 export function buildTunnelEnvironment(scene) {
   scene.tunnelDrips = [];
+  scene.tunnelMist = [];
 
-  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, TUNNEL_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x050a0e);
-  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, 210, TUNNEL_WORLD_WIDTH, 340, 0x121c22, 1);
-  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, 252, TUNNEL_WORLD_WIDTH, 260, 0x253239, 0.42);
-  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, 652, TUNNEL_WORLD_WIDTH, 136, 0x091319, 1);
+  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, TUNNEL_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x04080c);
+  scene.add.ellipse(1220, 152, 860, 260, 0x29414f, 0.08);
+  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, 206, TUNNEL_WORLD_WIDTH, 342, 0x0d151b, 1);
+  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, 256, TUNNEL_WORLD_WIDTH, 248, 0x1a252c, 0.7);
+  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, 654, TUNNEL_WORLD_WIDTH, 132, 0x061018, 1);
+  scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, 630, TUNNEL_WORLD_WIDTH, 34, 0x1b536a, 0.16);
 
-  const tunnel = scene.add.container(1200, 388).setDepth(2);
+  const tunnel = scene.add.container(1200, 392).setDepth(2);
   tunnel.add([
-    scene.add.ellipse(0, 224, 1120, 56, 0x000000, 0.3),
-    scene.add.rectangle(0, 18, 1020, 360, 0x2b3439, 1).setStrokeStyle(6, 0x13191d, 0.84),
-    scene.add.ellipse(0, -82, 1020, 210, 0x314049, 0.46).setStrokeStyle(3, 0x5d707b, 0.12),
-    scene.add.rectangle(0, 182, 1020, 36, 0x1d252a, 1),
+    scene.add.ellipse(0, 228, 1120, 62, 0x000000, 0.3),
+    scene.add.rectangle(0, 28, 1040, 350, 0x242d32, 1).setStrokeStyle(6, 0x11171b, 0.84),
+    scene.add.ellipse(0, -86, 1040, 228, 0x32414a, 0.42).setStrokeStyle(3, 0x5d707b, 0.12),
+    scene.add.rectangle(0, 186, 1040, 34, 0x172126, 1),
   ]);
 
-  for (let index = 0; index < 9; index += 1) {
-    const drip = scene.add.rectangle(820 + index * 90, 164 + (index % 2) * 20, 3, 44 + (index % 3) * 16, 0x87b9c7, 0.12).setDepth(5);
+  for (let index = 0; index < 7; index += 1) {
+    tunnel.add(scene.add.rectangle(-364 + index * 122, -28, 102, 168, 0x304047, 0.12));
+  }
+
+  scene.tunnelLeftGlow = scene.add.ellipse(850, 388, 220, 180, 0x8ad0dd, 0.04).setDepth(4);
+  scene.tunnelRightGlow = scene.add.ellipse(1570, 392, 260, 190, 0xd4b56d, 0.04).setDepth(4);
+
+  for (let index = 0; index < 10; index += 1) {
+    const drip = scene.add.rectangle(
+      814 + index * 84,
+      156 + (index % 3) * 18,
+      3,
+      48 + (index % 4) * 12,
+      0x8ac2d0,
+      0.12
+    ).setDepth(5);
     drip.speed = 0.8 + index * 0.08;
     drip.baseY = drip.y;
     scene.tunnelDrips.push(drip);
+  }
+
+  for (let index = 0; index < 6; index += 1) {
+    const haze = scene.add.ellipse(
+      1020 + index * 98,
+      544 + (index % 2) * 10,
+      90 + index * 12,
+      26,
+      0xc4edf2,
+      0.028
+    ).setDepth(6);
+    haze.baseX = haze.x;
+    haze.baseY = haze.y;
+    haze.phase = index * 0.52;
+    scene.tunnelMist.push(haze);
   }
 
   createTunnelProps(scene);
@@ -101,19 +184,33 @@ export function buildTunnelEnvironment(scene) {
 export function createTunnelGround(scene) {
   scene.physics.world.setBounds(0, 0, TUNNEL_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT);
   scene.platforms = scene.physics.add.staticGroup();
-  const ground = scene.add.rectangle(1200, PREVIEW_GROUND_Y + 60, 1020, 120, 0x364146, 0);
+  const ground = scene.add.rectangle(1200, PREVIEW_GROUND_Y + 60, 1040, 120, 0x364146, 0);
   scene.physics.add.existing(ground, true);
   scene.platforms.add(ground);
 }
 
 export function updateTunnelAmbient(scene, time) {
   for (const drip of scene.tunnelDrips) {
-    drip.y = drip.baseY + Math.sin(time * 0.0018 + drip.speed) * 8;
-    drip.alpha = 0.08 + Math.sin(time * 0.0022 + drip.speed) * 0.04;
+    drip.y = drip.baseY + Math.sin(time * 0.0018 + drip.speed) * 9;
+    drip.alpha = 0.08 + Math.sin(time * 0.0022 + drip.speed) * 0.05;
+  }
+
+  for (const haze of scene.tunnelMist) {
+    haze.x = haze.baseX + Math.sin(time * 0.0012 + haze.phase) * 18;
+    haze.y = haze.baseY - Math.abs(Math.sin(time * 0.0016 + haze.phase)) * 7;
+    haze.alpha = 0.02 + Math.sin(time * 0.0014 + haze.phase) * 0.015 + 0.022;
   }
 
   if (scene.signalGlow) {
-    scene.signalGlow.alpha = 0.06 + Math.sin(time * 0.003) * 0.05;
+    scene.signalGlow.alpha = 0.08 + Math.sin(time * 0.003) * 0.06;
+  }
+
+  if (scene.tunnelLeftGlow) {
+    scene.tunnelLeftGlow.alpha = 0.03 + Math.sin(time * 0.0017) * 0.02;
+  }
+
+  if (scene.tunnelRightGlow) {
+    scene.tunnelRightGlow.alpha = 0.03 + Math.sin(time * 0.0021) * 0.02;
   }
 }
 
@@ -202,64 +299,75 @@ export function updateBayAmbient(scene, time) {
 }
 
 function createServiceProps(scene) {
-  scene.add.container(962, 552).setDepth(8).add([
-    scene.add.ellipse(0, 30, 120, 18, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 64, 42, 0x7a5f44, 1).setStrokeStyle(3, 0xd7c59c, 0.2),
-    scene.add.rectangle(-16, 0, 4, 42, 0x4a3727, 1),
+  scene.add.container(948, 552).setDepth(8).add([
+    scene.add.ellipse(0, 28, 136, 20, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 76, 46, 0x775f47, 1).setStrokeStyle(3, 0xd7c59c, 0.2),
+    scene.add.rectangle(-18, 0, 5, 46, 0x4a3727, 1),
+    scene.add.rectangle(10, -8, 30, 14, 0xb8b0a4, 1).setAngle(-8),
+    scene.add.rectangle(12, -8, 16, 3, 0x31414d, 1).setAngle(-8),
   ]);
 
   const hatch = scene.add.container(1112, 560).setDepth(8);
   hatch.add([
-    scene.add.ellipse(0, 20, 140, 18, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 96, 24, 0x45545d, 1).setStrokeStyle(3, 0x91a7b2, 0.2),
-    scene.add.arc(0, 2, 16, 200, -20, false, 0xd7c59c, 1).setLineWidth(4),
+    scene.add.ellipse(0, 20, 154, 20, 0x000000, 0.2),
+    scene.add.rectangle(0, 0, 102, 26, 0x44545d, 1).setStrokeStyle(3, 0x91a7b2, 0.24),
+    scene.add.arc(0, 2, 18, 200, -20, false, 0xd7c59c, 1).setLineWidth(4),
+    scene.add.rectangle(0, 0, 70, 6, 0x28333a, 1),
   ]);
 
-  const consoleUnit = scene.add.container(1406, 530).setDepth(8);
+  const consoleUnit = scene.add.container(1406, 528).setDepth(8);
   consoleUnit.add([
-    scene.add.ellipse(0, 32, 150, 22, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 112, 70, 0x32414a, 1).setStrokeStyle(3, 0x8aa1ac, 0.2),
-    scene.add.rectangle(0, -8, 74, 28, 0x131c21, 1),
-    scene.add.rectangle(-30, 12, 18, 8, 0x89b6bf, 0.4),
-    scene.add.rectangle(0, 12, 18, 8, 0x89b6bf, 0.4),
-    scene.add.rectangle(30, 12, 18, 8, 0x89b6bf, 0.4),
+    scene.add.ellipse(0, 40, 188, 24, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 132, 82, 0x32414a, 1).setStrokeStyle(3, 0x8aa1ac, 0.24),
+    scene.add.rectangle(0, -12, 88, 34, 0x131c21, 1),
+    scene.add.rectangle(-38, 18, 18, 8, 0x89b6bf, 0.42),
+    scene.add.rectangle(-10, 18, 18, 8, 0x89b6bf, 0.42),
+    scene.add.rectangle(18, 18, 18, 8, 0x89b6bf, 0.42),
+    scene.add.rectangle(46, 18, 18, 8, 0xe1bb73, 0.28),
+    scene.add.rectangle(78, -6, 16, 46, 0x27343d, 1),
   ]);
-  scene.consoleGlow = scene.add.circle(1406, 522, 22, 0x8ad5db, 0.05).setDepth(7);
+  scene.consoleGlow = scene.add.circle(1406, 516, 32, 0x8ad5db, 0.06).setDepth(7);
 
-  scene.add.container(1688, 520).setDepth(8).add([
-    scene.add.ellipse(0, 70, 90, 16, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 58, 164, 0x3b3028, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
-    scene.add.rectangle(0, -8, 42, 42, 0x20262c, 1).setStrokeStyle(2, 0x8ea4af, 0.22),
-    scene.add.line(0, 0, -16, 0, 16, 0, 0xe0c27d, 1).setLineWidth(4),
+  scene.add.container(1678, 516).setDepth(8).add([
+    scene.add.ellipse(0, 74, 96, 16, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 62, 170, 0x3b3028, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
+    scene.add.rectangle(0, -12, 46, 38, 0x20262c, 1).setStrokeStyle(2, 0x8ea4af, 0.22),
+    scene.add.line(0, 0, -18, 4, 18, 4, 0xe0c27d, 1).setLineWidth(4),
+    scene.add.rectangle(-28, -40, 18, 54, 0x4a4138, 1).setStrokeStyle(2, 0xd2b47b, 0.18),
   ]);
 }
 
 function createTunnelProps(scene) {
   scene.add.container(734, 520).setDepth(8).add([
-    scene.add.ellipse(0, 70, 96, 16, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 58, 164, 0x3a3029, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
-    scene.add.rectangle(0, -8, 42, 42, 0x20262c, 1).setStrokeStyle(2, 0x8ea4af, 0.22),
+    scene.add.ellipse(0, 70, 98, 16, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 60, 166, 0x3a3029, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
+    scene.add.rectangle(0, -12, 44, 38, 0x20262c, 1).setStrokeStyle(2, 0x8ea4af, 0.22),
   ]);
 
-  scene.add.container(1012, 552).setDepth(8).add([
-    scene.add.ellipse(0, 24, 112, 18, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 64, 46, 0x58656b, 1).setStrokeStyle(3, 0xc9b07c, 0.2),
-    scene.add.rectangle(0, -2, 34, 6, 0x202932, 1),
+  scene.add.container(1012, 550).setDepth(8).add([
+    scene.add.ellipse(0, 28, 124, 18, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 72, 52, 0x58656b, 1).setStrokeStyle(3, 0xc9b07c, 0.2),
+    scene.add.rectangle(0, -4, 38, 8, 0x202932, 1),
+    scene.add.rectangle(-18, -12, 12, 18, 0x31404a, 1),
+    scene.add.rectangle(18, -12, 12, 18, 0x31404a, 1),
   ]);
 
   const signal = scene.add.container(1460, 516).setDepth(8);
   signal.add([
-    scene.add.ellipse(0, 42, 132, 18, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 84, 82, 0x304048, 1).setStrokeStyle(3, 0xe1bb73, 0.2),
-    scene.add.rectangle(0, -10, 42, 20, 0x131c21, 1),
-    scene.add.circle(22, 10, 6, 0x9fe0eb, 0.7),
+    scene.add.ellipse(0, 48, 148, 18, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 98, 92, 0x304048, 1).setStrokeStyle(3, 0xe1bb73, 0.2),
+    scene.add.rectangle(0, -12, 48, 24, 0x131c21, 1),
+    scene.add.circle(24, 12, 6, 0x9fe0eb, 0.82),
+    scene.add.rectangle(-18, 14, 20, 6, 0x6a808a, 1),
+    scene.add.rectangle(0, 14, 20, 6, 0x6a808a, 1),
   ]);
-  scene.signalGlow = scene.add.circle(1482, 524, 20, 0x9fe0eb, 0.08).setDepth(7);
+  scene.signalGlow = scene.add.circle(1484, 528, 28, 0x9fe0eb, 0.1).setDepth(7);
 
   scene.add.container(1726, 520).setDepth(8).add([
-    scene.add.ellipse(0, 70, 96, 16, 0x000000, 0.18),
-    scene.add.rectangle(0, 0, 62, 164, 0x3a312a, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
+    scene.add.ellipse(0, 70, 100, 16, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 66, 168, 0x3a312a, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
     scene.add.circle(12, 8, 5, 0xe0c27d, 1),
+    scene.add.rectangle(-30, -38, 18, 56, 0x4b4036, 1).setStrokeStyle(2, 0xd2b47b, 0.16),
   ]);
 }
 
