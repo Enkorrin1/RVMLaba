@@ -47,7 +47,10 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #000;
+  background:
+    radial-gradient(circle at top, rgba(78, 122, 154, 0.16), transparent 34%),
+    radial-gradient(circle at 18% 18%, rgba(228, 178, 95, 0.08), transparent 22%),
+    #000;
 }
 
 canvas {
@@ -71,6 +74,7 @@ canvas {
   backdrop-filter: blur(12px);
   opacity: 1;
   transition: opacity 220ms ease;
+  animation: overlayPulse 7s ease-in-out infinite;
 }
 
 .chapter-overlay--hidden {
@@ -90,6 +94,7 @@ canvas {
     0 24px 70px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   text-align: center;
+  animation: cardFloat 5.5s ease-in-out infinite;
 }
 
 .chapter-overlay__eyebrow {
@@ -125,18 +130,43 @@ canvas {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 10px 26px rgba(207, 150, 83, 0.32);
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
 }
 
 .chapter-overlay__button:hover {
   transform: translateY(-1px);
   box-shadow: 0 14px 30px rgba(207, 150, 83, 0.36);
+  filter: saturate(1.08);
 }
 
 .chapter-overlay__hint {
   margin: 14px 0 0;
   color: rgba(237, 245, 238, 0.7);
   font-size: 0.95rem;
+}
+
+@keyframes overlayPulse {
+  0%, 100% {
+    background:
+      radial-gradient(circle at center, rgba(20, 34, 46, 0.28), rgba(4, 8, 13, 0.88)),
+      rgba(3, 8, 13, 0.82);
+  }
+
+  50% {
+    background:
+      radial-gradient(circle at center, rgba(30, 46, 60, 0.34), rgba(4, 8, 13, 0.9)),
+      rgba(3, 8, 13, 0.84);
+  }
+}
+
+@keyframes cardFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @media (max-width: 900px) {

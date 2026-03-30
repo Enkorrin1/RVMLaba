@@ -195,6 +195,7 @@ const containerSlotCount = containerColumns * containerRows;
 
 const gameState = {
   lastTime: 0,
+  worldTime: 0,
   activeMessage: "Голова гудит. Как ты вообще оказался здесь, в комнате смотрителя, среди чужих вещей?",
   currentObjective: stageMeta.wake.objective,
   interactionCooldown: 0,
@@ -205,6 +206,9 @@ const gameState = {
     note: false,
     logbook: false,
     valveWheel: false,
+    screwdriver: false,
+    serviceKey: false,
+    boatHook: false,
   },
   inventorySlots: Array.from({ length: inventorySlotCount }, () => null),
   inventoryOpen: false,
@@ -231,12 +235,25 @@ const gameState = {
   progressStage: "wake",
   chapterOverlayVisible: false,
   puzzleState: {
+    toolbox: {
+      panelOpened: false,
+    },
     generator: {
+      panelOpened: false,
       fuseInstalled: false,
       valveWheelInstalled: false,
     },
     serviceConsole: {
       batteryInstalled: false,
+    },
+    serviceDoor: {
+      panelOpened: false,
+    },
+    tunnelExit: {
+      unlocked: false,
+    },
+    seaGate: {
+      released: false,
     },
   },
   serviceProgress: {
@@ -247,10 +264,12 @@ const gameState = {
   tunnelProgress: {
     lockerOpened: false,
     signalFound: false,
+    exitChecked: false,
   },
   pierProgress: {
     skiffChecked: false,
     ropeFound: false,
+    gateChecked: false,
   },
   bayProgress: {
     campSeen: false,
@@ -258,6 +277,10 @@ const gameState = {
   },
   wakeProgress: {
     cluesChecked: false,
+    leavesMoved: false,
+  },
+  shoreProgress: {
+    toolboxChecked: false,
   },
   lanternProgress: {
     mechanismChecked: false,
@@ -319,6 +342,21 @@ const inventoryCatalog = {
     description: "Штурвал, который открывает подачу топлива к генератору.",
     useHint: "Подходит для генератора.",
   },
+  screwdriver: {
+    label: "Отвёртка",
+    description: "Плоская отвёртка с морской солью на рукояти. Ей можно снимать крышки и расшивать старые панели.",
+    useHint: "Подходит для крышек, щитков и заевших сервисных отсеков.",
+  },
+  serviceKey: {
+    label: "Служебный ключ",
+    description: "Потемневший ключ с жетоном смотрителя. Он должен открывать служебные створки внутри тоннеля.",
+    useHint: "Похоже, подходит к дверям и створкам служебных проходов.",
+  },
+  boatHook: {
+    label: "Багор",
+    description: "Короткий багор из ялика. Им удобно подцеплять засовы и мокрые тросы.",
+    useHint: "Подходит для створов, петель и всего, до чего нельзя дотянуться рукой.",
+  },
 };
 
 const containerCatalog = {
@@ -331,19 +369,51 @@ const containerCatalog = {
 };
 
 const puzzleDefinitions = {
+  toolbox: {
+    title: "Инструментальный ящик",
+    stateKey: "toolbox",
+    steps: [
+      {
+        itemId: "screwdriver",
+        progressKey: "panelOpened",
+        successText: "Ты выкручиваешь два прикипевших винта. Крышка инструментального ящика наконец поддаётся.",
+        alreadyText: "Крышка ящика уже снята.",
+        keepItem: true,
+      },
+    ],
+    onSolved() {
+      gameState.shoreProgress.toolboxChecked = true;
+      return {
+        text: "Под крышкой виден силовой предохранитель и ржавый набор гаечных ключей.",
+        objective: getGeneratorObjective(),
+      };
+    },
+    getHint() {
+      return getGeneratorObjective();
+    },
+  },
   generator: {
     title: "Резервный генератор",
     stateKey: "generator",
     steps: [
       {
+        itemId: "screwdriver",
+        progressKey: "panelOpened",
+        successText: "Ты снимаешь сервисную крышку генератора. Теперь можно добраться до силового отсека и топливного клапана.",
+        alreadyText: "Сервисная крышка генератора уже снята.",
+        keepItem: true,
+      },
+      {
         itemId: "fuse",
         progressKey: "fuseInstalled",
+        requires: ["panelOpened"],
         successText: "Предохранитель встаёт на место в силовом щитке генератора.",
         alreadyText: "Предохранитель уже установлен в генератор.",
       },
       {
         itemId: "valveWheel",
         progressKey: "valveWheelInstalled",
+        requires: ["panelOpened"],
         successText: "Ты закрепляешь штурвал и открываешь подачу топлива к генератору.",
         alreadyText: "Штурвал уже установлен на топливный клапан.",
       },
@@ -388,6 +458,72 @@ const puzzleDefinitions = {
       return getServiceObjective();
     },
   },
+  "sealed-door": {
+    title: "Запертая дверь",
+    stateKey: "serviceDoor",
+    steps: [
+      {
+        itemId: "screwdriver",
+        progressKey: "panelOpened",
+        successText: "Ты снимаешь жестяной щиток с дверной цепи. Теперь видно, как зацеплен запор.",
+        alreadyText: "Щиток с дверной цепи уже снят.",
+        keepItem: true,
+      },
+    ],
+    onSolved() {
+      return {
+        text: "Теперь дверь можно изучить внимательнее, но без остальных подсказок ломиться дальше всё ещё опасно.",
+        objective: getServiceObjective(),
+      };
+    },
+    getHint() {
+      return getServiceObjective();
+    },
+  },
+  "tunnel-exit": {
+    title: "Выход к нижней пристани",
+    stateKey: "tunnelExit",
+    steps: [
+      {
+        itemId: "serviceKey",
+        progressKey: "unlocked",
+        successText: "Служебный ключ входит в старый замок. Засов внутри тоннельного выхода мягко отходит.",
+        alreadyText: "Замок выхода к пристани уже открыт.",
+        keepItem: true,
+      },
+    ],
+    onSolved() {
+      return {
+        text: "Теперь проход к нижней пристани больше не заперт изнутри.",
+        objective: getTunnelObjective(),
+      };
+    },
+    getHint() {
+      return getTunnelObjective();
+    },
+  },
+  "sea-gate": {
+    title: "Морской створ",
+    stateKey: "seaGate",
+    steps: [
+      {
+        itemId: "boatHook",
+        progressKey: "released",
+        successText: "Ты подцепляешь багром мокрый засов и срываешь его вниз. Створ готов открыться.",
+        alreadyText: "Засов морского створа уже сорван.",
+        keepItem: true,
+      },
+    ],
+    onSolved() {
+      return {
+        text: "Теперь морской створ держится только на тяжёлой петле и откроется, если путь действительно готов.",
+        objective: getPierObjective(),
+      };
+    },
+    getHint() {
+      return getPierObjective();
+    },
+  },
 };
 
 const wakePlatforms = [
@@ -428,7 +564,7 @@ const interactables = [
     y: 542,
     width: 136,
     height: 58,
-    title: "Батарея",
+    title: "Кровать",
     exactStage: "wake",
     onInteract() {
       return {
@@ -484,6 +620,30 @@ const interactables = [
       gameState.wakeProgress.cluesChecked = true;
       return {
         text: "Грязные следы тянутся от кровати через комнату к лестнице и дальше к выходу. Значит, кто-то был здесь совсем недавно и ушёл в спешке.",
+        objective: getWakeObjective(),
+      };
+    },
+  },
+  {
+    id: "leaf-pile",
+    x: 1438,
+    y: 560,
+    width: 88,
+    height: 40,
+    title: "Сухие листья",
+    exactStage: "wake",
+    onInteract() {
+      if (!gameState.wakeProgress.leavesMoved) {
+        gameState.wakeProgress.leavesMoved = true;
+        addInventoryItem("screwdriver");
+        return {
+          text: "Под слежавшимися листьями и песком пряталась отвёртка. Кто-то бросил её у стены второпях.",
+          objective: getWakeObjective(),
+        };
+      }
+
+      return {
+        text: "Листья уже разворошены. Под ними только пыль, соль и след от недавно вытащенного инструмента.",
         objective: getWakeObjective(),
       };
     },
@@ -657,6 +817,16 @@ const interactables = [
     height: 40,
     title: "Инструментальный ящик",
     onInteract() {
+      gameState.shoreProgress.toolboxChecked = true;
+      if (!gameState.puzzleState.toolbox.panelOpened) {
+        return {
+          text: gameState.inventory.screwdriver
+            ? "Крышка ящика сидит на прикипевших винтах. Выбери отвёртку в инвентаре и сними крышку."
+            : "Инструментальный ящик стянут винтами. Без отвёртки его не открыть.",
+          objective: getGeneratorObjective(),
+        };
+      }
+
       openContainerPanel("toolbox");
       return {
         text: isContainerEmpty("toolbox")
@@ -728,6 +898,15 @@ const interactables = [
     onInteract() {
       advanceStage("generator");
       const generatorState = gameState.puzzleState.generator;
+
+      if (!generatorState.panelOpened) {
+        return {
+          text: gameState.inventory.screwdriver
+            ? "Крышка генератора прикручена. Выбери отвёртку и вскрой сервисный отсек перед ремонтом."
+            : "Сервисный отсек генератора закрыт винтами. Нужна отвёртка.",
+          objective: getGeneratorObjective(),
+        };
+      }
 
       if (!generatorState.fuseInstalled || !generatorState.valveWheelInstalled) {
         return {
@@ -842,6 +1021,15 @@ const interactables = [
     onInteract() {
       gameState.serviceProgress.doorChecked = true;
 
+      if (!gameState.puzzleState.serviceDoor.panelOpened) {
+        return {
+          text: gameState.inventory.screwdriver
+            ? "На цепи висит жестяной щиток. Сними его отвёрткой, иначе не видно, как открыть дверь."
+            : "Дверь удерживает цепь под защитным щитком. Без отвёртки к запору не подобраться.",
+          objective: getServiceObjective(),
+        };
+      }
+
       const allCluesFound = hasResolvedServiceScene();
 
       if (allCluesFound) {
@@ -873,8 +1061,17 @@ const interactables = [
     stageRequirement: "tunnel",
     onInteract() {
       gameState.tunnelProgress.lockerOpened = true;
+
+      if (!gameState.inventory.serviceKey) {
+        addInventoryItem("serviceKey");
+        return {
+          text: "Среди мокрого плаща висит связка служебных ключей. Один из них как раз подходит к створкам старых проходов.",
+          objective: getTunnelObjective(),
+        };
+      }
+
       return {
-        text: "Внутри только мокрый плащ и связка служебных ключей. Один из жетонов подписан инициалами прежнего смотрителя.",
+        text: "Внутри мокрый плащ, пустой держатель ключей и жетон с инициалами прежнего смотрителя.",
         objective: getTunnelObjective(),
       };
     },
@@ -927,6 +1124,17 @@ const interactables = [
     title: "Выход к нижней пристани",
     stageRequirement: "tunnel",
     onInteract() {
+      gameState.tunnelProgress.exitChecked = true;
+
+      if (!gameState.puzzleState.tunnelExit.unlocked) {
+        return {
+          text: gameState.inventory.serviceKey
+            ? "Выход закрыт на внутренний замок. Выбери служебный ключ и открой проход."
+            : "Выход к пристани закрыт на старый служебный замок. Нужен ключ из шкафчика смотрителя.",
+          objective: getTunnelObjective(),
+        };
+      }
+
       if (!hasResolvedTunnelScene()) {
         return {
           text: "Сквозняк тянет со стороны моря, но уходить вслепую рано. Сначала нужно осмотреть тоннель внимательнее.",
@@ -978,8 +1186,17 @@ const interactables = [
     stageRequirement: "pier",
     onInteract() {
       gameState.pierProgress.skiffChecked = true;
+
+      if (!gameState.inventory.boatHook) {
+        addInventoryItem("boatHook");
+        return {
+          text: "На дне ялика, рядом с пустым фонарём, лежит короткий багор. Он может помочь с тугими створками у воды.",
+          objective: getPierObjective(),
+        };
+      }
+
       return {
-        text: "Ялик привязан наспех и весь мокрый от солёных брызг. На дне лежит пустой фонарь и следы свежей грязи.",
+        text: "Ялик привязан наспех и весь мокрый от солёных брызг. На дне остались пустой фонарь и следы свежей грязи.",
         objective: getPierObjective(),
       };
     },
@@ -1011,6 +1228,17 @@ const interactables = [
     title: "Морской створ",
     stageRequirement: "pier",
     onInteract() {
+      gameState.pierProgress.gateChecked = true;
+
+      if (!gameState.puzzleState.seaGate.released) {
+        return {
+          text: gameState.inventory.boatHook
+            ? "Створ держится на мокром засове. Выбери багор и подцепи его."
+            : "Створ закушен мокрым засовом. Рукой его не сорвать, нужен инструмент из ялика.",
+          objective: getPierObjective(),
+        };
+      }
+
       if (!hasResolvedPierScene()) {
         return {
           text: "Створ приоткрыт, и за ним слышен прибой. Пока слишком мало следов, чтобы понять, куда вести сцену дальше.",
@@ -1287,6 +1515,7 @@ function intersects(a, b) {
 }
 
 function update(dt) {
+  gameState.worldTime += dt;
   gameState.interactionCooldown = Math.max(0, gameState.interactionCooldown - dt);
   updateCameraZoom(dt);
 
@@ -1765,6 +1994,13 @@ function tryUseSelectedItemOn(interactableId) {
     };
   }
 
+  if (step.requires?.some((progressKey) => !puzzleState[progressKey])) {
+    return {
+      text: `Сначала нужно подготовить объект "${getInteractableTitle(interactableId)}", а уже потом применять "${getItemLabel(selectedItemId)}".`,
+      objective: puzzle.getHint(),
+    };
+  }
+
   if (puzzleState[step.progressKey]) {
     return {
       text: step.alreadyText,
@@ -1773,7 +2009,9 @@ function tryUseSelectedItemOn(interactableId) {
   }
 
   puzzleState[step.progressKey] = true;
-  removeInventoryItem(selectedItemId);
+  if (!step.keepItem) {
+    removeInventoryItem(selectedItemId);
+  }
 
   const solved = puzzle.steps.every((entry) => puzzleState[entry.progressKey]);
   if (solved) {
@@ -2476,10 +2714,21 @@ function getActivePuzzleStatuses() {
   const statuses = [];
 
   if (isStageAtLeast("lighthouse") && !gameState.endingUnlocked) {
+    const toolboxState = gameState.puzzleState.toolbox;
     const generatorState = gameState.puzzleState.generator;
     statuses.push({
       title: "Генератор",
       steps: [
+        toolboxState.panelOpened
+          ? "[x] Инструментальный ящик открыт"
+          : gameState.inventory.screwdriver
+            ? "[ ] Отвёртка у тебя"
+            : "[ ] Найти отвёртку",
+        generatorState.panelOpened
+          ? "[x] Крышка генератора снята"
+          : gameState.inventory.screwdriver
+            ? "[ ] Снять крышку генератора"
+            : "[ ] Нужна отвёртка",
         generatorState.fuseInstalled
           ? "[x] Предохранитель"
           : gameState.inventory.fuse
@@ -2499,6 +2748,51 @@ function getActivePuzzleStatuses() {
       title: "Сервисный пульт",
       steps: [
         gameState.inventory.battery ? "[ ] Батарея у тебя" : "[ ] Нужна батарея",
+      ],
+    });
+  }
+
+  if (isStageAtLeast("service") && !isStageAtLeast("tunnel")) {
+    statuses.push({
+      title: "Дверь в тоннель",
+      steps: [
+        gameState.puzzleState.serviceDoor.panelOpened
+          ? "[x] Щиток с цепи снят"
+          : gameState.inventory.screwdriver
+            ? "[ ] Снять щиток отвёрткой"
+            : "[ ] Нужна отвёртка",
+        gameState.serviceProgress.logbookRead ? "[x] Журнал изучен" : "[ ] Проверить журнал",
+        gameState.serviceProgress.consoleUsed ? "[x] Пульт активирован" : "[ ] Проверить сервисный пульт",
+      ],
+    });
+  }
+
+  if (isStageAtLeast("tunnel") && !isStageAtLeast("pier")) {
+    statuses.push({
+      title: "Проход к пристани",
+      steps: [
+        gameState.tunnelProgress.lockerOpened ? "[x] Шкафчик осмотрен" : "[ ] Осмотреть шкафчик",
+        gameState.tunnelProgress.signalFound ? "[x] Сигнал найден" : "[ ] Найти сигнал",
+        gameState.puzzleState.tunnelExit.unlocked
+          ? "[x] Замок выхода открыт"
+          : gameState.inventory.serviceKey
+            ? "[ ] Ключ у тебя"
+            : "[ ] Найти служебный ключ",
+      ],
+    });
+  }
+
+  if (isStageAtLeast("pier") && !isStageAtLeast("bay")) {
+    statuses.push({
+      title: "Морской створ",
+      steps: [
+        gameState.pierProgress.skiffChecked ? "[x] Ялик осмотрен" : "[ ] Осмотреть ялик",
+        gameState.pierProgress.ropeFound ? "[x] Лебёдка проверена" : "[ ] Проверить лебёдку",
+        gameState.puzzleState.seaGate.released
+          ? "[x] Засов сорван"
+          : gameState.inventory.boatHook
+            ? "[ ] Багор у тебя"
+            : "[ ] Найти инструмент для створа",
       ],
     });
   }
@@ -2600,16 +2894,30 @@ function getServiceObjective() {
         : "Цель: найти батарею для сервисного пульта.";
   }
 
+  if (!gameState.puzzleState.serviceDoor.panelOpened) {
+    return gameState.inventory.screwdriver
+      ? "Цель: отвёрткой снять щиток с цепи на двери в восточный тоннель."
+      : "Цель: найти отвёртку и добраться до цепи на двери в тоннель.";
+  }
+
   if (!gameState.serviceProgress.doorChecked) {
     return "Цель: осмотреть запертую дверь в восточный тоннель.";
   }
 
-  return "Новая цель: подготовить следующую сцену с восточным тоннелем под маяком.";
+  return "Цель: вернуться к двери и открыть проход в восточный тоннель.";
 }
 
 function getGeneratorObjective() {
   const generatorState = gameState.puzzleState.generator;
   const tasks = [];
+
+  if (!gameState.puzzleState.toolbox.panelOpened) {
+    tasks.push(gameState.inventory.screwdriver ? "открыть инструментальный ящик отвёрткой" : "найти отвёртку");
+  }
+
+  if (!generatorState.panelOpened) {
+    tasks.push(gameState.inventory.screwdriver ? "снять крышку генератора" : "найти отвёртку для генератора");
+  }
 
   if (!generatorState.fuseInstalled) {
     tasks.push(gameState.inventory.fuse ? "установить предохранитель" : "найти предохранитель");
@@ -2629,6 +2937,10 @@ function getGeneratorObjective() {
 }
 
 function getWakeObjective() {
+  if (!gameState.wakeProgress.leavesMoved) {
+    return "Цель: осмотреть комнату и всё, что могло остаться на полу у стены и двери.";
+  }
+
   if (!gameState.wakeProgress.cluesChecked) {
     return stageMeta.wake.objective;
   }
@@ -2701,6 +3013,12 @@ function getTunnelObjective() {
     return "Цель: найти источник аварийного сигнала в восточном тоннеле.";
   }
 
+  if (!gameState.puzzleState.tunnelExit.unlocked) {
+    return gameState.inventory.serviceKey
+      ? "Цель: открыть служебным ключом выход к нижней пристани."
+      : "Цель: найти ключ, которым открывается выход к нижней пристани.";
+  }
+
   return "Цель: проверить выход к нижней пристани.";
 }
 
@@ -2715,6 +3033,12 @@ function getPierObjective() {
 
   if (!gameState.pierProgress.ropeFound) {
     return "Цель: проверить лебёдку у края пристани.";
+  }
+
+  if (!gameState.puzzleState.seaGate.released) {
+    return gameState.inventory.boatHook
+      ? "Цель: использовать багор, чтобы сорвать засов морского створа."
+      : "Цель: найти инструмент в ялике, чтобы открыть морской створ.";
   }
 
   return "Цель: проверить морской створ у подножия скал.";
@@ -2976,18 +3300,18 @@ function drawSea() {
   ctx.fillRect(0, 430, world.width, world.height - 430);
 
   ctx.fillStyle = "rgba(196, 226, 235, 0.18)";
-  ctx.fillRect(0, 452, world.width, 4);
+  ctx.fillRect(0, 452 + Math.sin(gameState.worldTime * 1.6) * 2, world.width, 4);
 
   for (let i = 0; i < 26; i += 1) {
-    const waveY = 470 + (i % 7) * 20;
-    const waveX = i * 215 - (i % 3) * 30;
+    const waveY = 470 + (i % 7) * 20 + Math.sin(gameState.worldTime * 1.5 + i * 0.8) * 3;
+    const waveX = i * 215 - (i % 3) * 30 + Math.sin(gameState.worldTime * 0.9 + i * 0.3) * 16;
     const waveWidth = 130 + (i % 4) * 30;
     ctx.fillStyle = i % 2 === 0 ? "rgba(167, 207, 221, 0.14)" : "rgba(128, 179, 198, 0.1)";
     ctx.fillRect(waveX, waveY, waveWidth, 5);
   }
 
   for (let i = 0; i < 14; i += 1) {
-    const foamX = 38 + i * 380;
+    const foamX = 38 + i * 380 + Math.sin(gameState.worldTime * 1.2 + i * 0.6) * 14;
     ctx.fillStyle = "rgba(234, 242, 240, 0.16)";
     ctx.fillRect(foamX, world.seaLevel + 8 + (i % 3) * 6, 84, 4);
   }
@@ -3326,6 +3650,10 @@ function drawInteractables() {
 }
 
 function getItemColor(item) {
+  if (item.id === "leaf-pile") {
+    return gameState.wakeProgress.leavesMoved ? "#7f715d" : "#9a845e";
+  }
+
   if (item.id === "boat" || item.id === "skiff") {
     return "#7f98a5";
   }
@@ -3342,6 +3670,10 @@ function getItemColor(item) {
     return "#d0c86c";
   }
 
+  if (item.id === "screwdriver") {
+    return "#c66f52";
+  }
+
   if (item.id === "fuse") {
     return "#c8d6df";
   }
@@ -3352,6 +3684,14 @@ function getItemColor(item) {
 
   if (item.id === "radio" || item.id === "signal" || item.id === "service-console") {
     return "#8db0bf";
+  }
+
+  if (item.id === "serviceKey") {
+    return "#d8c17a";
+  }
+
+  if (item.id === "boatHook") {
+    return "#ba8f63";
   }
 
   if (item.id === "valve-wheel") {
@@ -3368,6 +3708,10 @@ function getItemColor(item) {
 
   if (item.id === "generator" && gameState.inventory.fuse && gameState.inventory.valveWheel) {
     return "#e4b25f";
+  }
+
+  if (item.id === "generator" && gameState.puzzleState.generator.panelOpened) {
+    return "#d6ad6b";
   }
 
   if (item.id === "generator" && gameState.endingUnlocked) {
@@ -3403,7 +3747,9 @@ function getItemColor(item) {
   }
 
   if (item.id === "sealed-door") {
-    return hasResolvedServiceScene() ? "#d7bb74" : "#68717a";
+    return gameState.puzzleState.serviceDoor.panelOpened
+      ? hasResolvedServiceScene() ? "#d7bb74" : "#8a8e93"
+      : "#68717a";
   }
 
   if (item.id === "locker") {
@@ -3415,7 +3761,9 @@ function getItemColor(item) {
   }
 
   if (item.id === "tunnel-exit") {
-    return hasResolvedTunnelScene() ? "#d7bb74" : "#5f6970";
+    return gameState.puzzleState.tunnelExit.unlocked
+      ? hasResolvedTunnelScene() ? "#d7bb74" : "#94a1aa"
+      : "#5f6970";
   }
 
   if (item.id === "skiff") {
@@ -3427,7 +3775,9 @@ function getItemColor(item) {
   }
 
   if (item.id === "sea-gate") {
-    return hasResolvedPierScene() ? "#d7bb74" : "#5c6872";
+    return gameState.puzzleState.seaGate.released
+      ? hasResolvedPierScene() ? "#d7bb74" : "#8d9da7"
+      : "#5c6872";
   }
 
   if (item.id === "bay-return-gate") {
@@ -3964,13 +4314,14 @@ function drawInteractablesV2() {
 
 function drawInteractionPrompt(item) {
   const plainLabel = `${item.title} / E`;
+  const pulse = 0.5 + 0.5 * Math.sin(gameState.worldTime * 3.2);
 
   ctx.save();
   ctx.font = "18px Georgia";
   const bubbleWidth = Math.ceil(ctx.measureText(plainLabel).width + 34);
   const bubbleHeight = 36;
   const bubbleX = item.x + item.width / 2 - bubbleWidth / 2;
-  const bubbleY = Math.max(item.y - 46, 14);
+  const bubbleY = Math.max(item.y - 46 - pulse * 2, 14);
 
   drawUiPanel(bubbleX, bubbleY, bubbleWidth, bubbleHeight, {
     radius: 18,
@@ -3999,6 +4350,8 @@ function drawInteractableSprite(item, isActive) {
     ctx.shadowBlur = 12;
   }
 
+  drawInteractableShadow(item);
+
   switch (item.id) {
     case "bed":
       fillAndStrokeRect(x, y + 30, w, 16, "#6d5847", outline);
@@ -4020,6 +4373,9 @@ function drawInteractableSprite(item, isActive) {
     case "footprints-room":
     case "footprints":
       drawFootprintsSprite(x, y, w, h, accent, outline);
+      break;
+    case "leaf-pile":
+      drawLeafPileSprite(x, y, w, h, accent, outline);
       break;
     case "room-door":
       drawSideDoorSprite(x, y, w, h, accent, outline);
@@ -4061,6 +4417,15 @@ function drawInteractableSprite(item, isActive) {
     case "note":
     case "logbook":
       drawPaperSprite(x, y, w, h, item.id === "logbook", outline);
+      break;
+    case "screwdriver":
+      drawScrewdriverSprite(x, y, w, h, accent, outline);
+      break;
+    case "serviceKey":
+      drawKeySprite(x, y, w, h, accent, outline);
+      break;
+    case "boatHook":
+      drawBoatHookSprite(x, y, w, h, accent, outline);
       break;
     case "radio":
       drawRadioSprite(x, y, w, h, false, accent, outline);
@@ -4280,12 +4645,46 @@ function drawPaperSprite(x, y, w, h, isBook, outline) {
   ctx.fillRect(x + 6, y + 20, w - 10, 2);
 }
 
+function drawLeafPileSprite(x, y, w, h, accent, outline) {
+  ctx.fillStyle = "#4f4432";
+  ctx.beginPath();
+  ctx.ellipse(x + w * 0.5, y + h - 8, w * 0.48, h * 0.22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  for (let index = 0; index < 7; index += 1) {
+    const leafX = x + 12 + index * ((w - 24) / 6);
+    const leafY = y + 10 + (index % 3) * 7;
+    ctx.fillStyle = index % 2 === 0 ? accent : "#8c6b43";
+    ctx.beginPath();
+    ctx.ellipse(leafX, leafY + 10, 10, 5, index % 2 === 0 ? -0.32 : 0.28, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + h - 8);
+  ctx.quadraticCurveTo(x + w / 2, y + 4, x + w - 8, y + h - 8);
+  ctx.stroke();
+}
+
 function drawBatterySprite(x, y, w, h, accent, outline) {
   fillAndStrokeRect(x + 2, y + 4, w - 4, h - 8, "#5a646b", outline);
   fillAndStrokeRect(x + w / 2 - 5, y, 10, 8, "#a5b1bb", outline);
   fillAndStrokeRect(x + 6, y + 10, w - 12, h - 20, accent, outline);
   ctx.fillStyle = "#2b3136";
   ctx.fillRect(x + 9, y + 14, w - 18, 4);
+}
+
+function drawScrewdriverSprite(x, y, w, h, accent, outline) {
+  ctx.save();
+  ctx.translate(x + w * 0.18, y + h * 0.82);
+  ctx.rotate(-0.48);
+  fillAndStrokeRect(0, -6, w * 0.58, 12, accent, outline);
+  fillAndStrokeRect(w * 0.52, -4, w * 0.18, 8, "#c3ccd4", outline);
+  ctx.fillStyle = "#6f4a38";
+  ctx.fillRect(10, -2, w * 0.18, 4);
+  ctx.restore();
 }
 
 function drawFuseSprite(x, y, w, h, accent, outline) {
@@ -4322,6 +4721,48 @@ function drawRadioSprite(x, y, w, h, isStanding, accent, outline) {
   ctx.beginPath();
   ctx.arc(x + w - 14, y + 28, 4, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawKeySprite(x, y, w, h, accent, outline) {
+  const ringX = x + w * 0.26;
+  const ringY = y + h * 0.46;
+  const shaftX = x + w * 0.34;
+  const shaftY = y + h * 0.42;
+
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = Math.max(3, w * 0.08);
+  ctx.beginPath();
+  ctx.arc(ringX, ringY, Math.min(w, h) * 0.18, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = accent;
+  ctx.fillRect(shaftX, shaftY, w * 0.42, h * 0.12);
+  ctx.fillRect(x + w * 0.58, y + h * 0.44, w * 0.08, h * 0.18);
+  ctx.fillRect(x + w * 0.7, y + h * 0.44, w * 0.08, h * 0.12);
+
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(shaftX, shaftY, w * 0.42, h * 0.12);
+}
+
+function drawBoatHookSprite(x, y, w, h, accent, outline) {
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = Math.max(4, w * 0.08);
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.3, y + h - 6);
+  ctx.lineTo(x + w * 0.7, y + 10);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x + w * 0.72, y + 12, w * 0.16, 0.18 * Math.PI, 1.24 * Math.PI);
+  ctx.stroke();
+
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.26, y + h - 4);
+  ctx.lineTo(x + w * 0.66, y + 8);
+  ctx.stroke();
 }
 
 function drawWheelSprite(x, y, w, h, accent, outline) {
@@ -4435,19 +4876,31 @@ function drawCampfireSprite(x, y, w, h, outline) {
 }
 
 function drawPlayer() {
+  const walkCycle = Math.sin(gameState.worldTime * 9 * Math.max(0.25, Math.abs(player.vx) / player.speed + 0.15));
+  const bodyLift = player.grounded ? Math.abs(walkCycle) * 1.5 : -2;
+  const legSwing = player.grounded ? walkCycle * 4 : 0;
+  const armSwing = player.grounded ? -walkCycle * 3 : 0;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(4, 6, 8, 0.26)";
+  ctx.beginPath();
+  ctx.ellipse(player.x + player.width / 2, player.y + player.height - 2, 18, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.fillStyle = "#d2b48c";
-  ctx.fillRect(player.x + 10, player.y, 24, 22);
+  ctx.fillRect(player.x + 10, player.y + bodyLift, 24, 22);
 
   ctx.fillStyle = "#34414e";
-  ctx.fillRect(player.x + 6, player.y + 22, 32, 32);
-
-  ctx.fillStyle = "#5b4232";
-  ctx.fillRect(player.x + 12, player.y + 54, 8, 20);
-  ctx.fillRect(player.x + 24, player.y + 54, 8, 20);
+  ctx.fillRect(player.x + 6, player.y + 22 + bodyLift, 32, 32);
 
   ctx.fillStyle = "#25303b";
   const armX = player.facing === 1 ? player.x + 34 : player.x + 4;
-  ctx.fillRect(armX, player.y + 26, 8, 22);
+  ctx.fillRect(armX, player.y + 26 + bodyLift + armSwing, 8, 22);
+
+  ctx.fillStyle = "#5b4232";
+  ctx.fillRect(player.x + 12, player.y + 54 + bodyLift + legSwing, 8, 20);
+  ctx.fillRect(player.x + 24, player.y + 54 + bodyLift - legSwing, 8, 20);
+  ctx.restore();
 }
 
 function roundedRectPath(x, y, width, height, radius = 18) {
@@ -4808,6 +5261,28 @@ function drawPuzzleStatusPanel() {
     y += 8;
   }
 
+  ctx.restore();
+}
+
+function drawInteractableShadow(item) {
+  const shadowWidth = Math.max(18, item.width * 0.72);
+  const shadowHeight = Math.max(6, item.height * 0.16);
+  const shadowY =
+    item.id === "room-door" ||
+    item.id === "lighthouse-door" ||
+    item.id === "sealed-door" ||
+    item.id === "service-return-door" ||
+    item.id === "tunnel-exit" ||
+    item.id === "pier-return-door" ||
+    item.id === "bay-return-gate"
+      ? item.y + item.height - 6
+      : item.y + item.height - 2;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(3, 5, 8, 0.22)";
+  ctx.beginPath();
+  ctx.ellipse(item.x + item.width / 2, shadowY, shadowWidth / 2, shadowHeight / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -5249,15 +5724,21 @@ function drawInventoryItemIcon(itemId, x, y, size) {
   const outline = "rgba(26, 20, 14, 0.72)";
   const accent =
     itemId === "battery" ? "#d0c86c" :
+    itemId === "screwdriver" ? "#c66f52" :
     itemId === "fuse" ? "#c8d6df" :
     itemId === "note" ? "#e6d8aa" :
     itemId === "logbook" ? "#7a5d42" :
+    itemId === "serviceKey" ? "#d8c17a" :
+    itemId === "boatHook" ? "#ba8f63" :
     itemId === "valveWheel" ? "#8e6f4c" :
     "#9fb7b8";
 
   switch (itemId) {
     case "battery":
       drawBatterySprite(x, y, size, size, accent, outline);
+      break;
+    case "screwdriver":
+      drawScrewdriverSprite(x, y, size, size, accent, outline);
       break;
     case "fuse":
       drawFuseSprite(x, y + size * 0.18, size, size * 0.46, accent, outline);
@@ -5267,6 +5748,12 @@ function drawInventoryItemIcon(itemId, x, y, size) {
       break;
     case "logbook":
       drawPaperSprite(x + size * 0.14, y + size * 0.1, size * 0.72, size * 0.82, true, outline);
+      break;
+    case "serviceKey":
+      drawKeySprite(x, y, size, size, accent, outline);
+      break;
+    case "boatHook":
+      drawBoatHookSprite(x, y, size, size, accent, outline);
       break;
     case "valveWheel":
       drawWheelSprite(x, y, size, size, accent, outline);
