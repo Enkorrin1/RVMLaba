@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Last Keeper Phaser Preview</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./phaser-preview.css">
+</head>
+<body class="phaser-preview-body">
+  <main class="game-shell">
+    <section class="preview-hud" aria-live="polite">
+      <p id="previewStage">Phaser Preview: комната смотрителя</p>
+      <p id="previewObjective">Стартовый vertical slice: переносим комнату смотрителя в новый визуальный уровень без потери логики.</p>
+      <p id="previewInventory">Инвентарь: пусто</p>
+      <p id="previewHint">A/D или стрелки для движения, W/Space для прыжка, E для взаимодействия.</p>
+    </section>
+
+    <p class="preview-badge">Скрытая preview-ветка. Основная игра не затронута.</p>
+    <section id="previewRuntimeError" class="preview-runtime-error" hidden aria-live="assertive">
+      <p class="preview-runtime-error__title">Preview runtime error</p>
+      <pre id="previewRuntimeErrorText" class="preview-runtime-error__text"></pre>
+    </section>
+    <section id="game" class="preview-game-host" aria-label="Phaser preview сцена Last Keeper"></section>
+  </main>
+
+  <script>
+    window.addEventListener("error", (event) => {
+      const panel = document.getElementById("previewRuntimeError");
+      const text = document.getElementById("previewRuntimeErrorText");
+      if (!panel || !text) {
+        return;
+      }
+
+      panel.hidden = false;
+      text.textContent = `${event.message}\n${event.filename}:${event.lineno}:${event.colno}`;
+    });
+
+    window.addEventListener("unhandledrejection", (event) => {
+      const panel = document.getElementById("previewRuntimeError");
+      const text = document.getElementById("previewRuntimeErrorText");
+      if (!panel || !text) {
+        return;
+      }
+
+      panel.hidden = false;
+      text.textContent = String(event.reason?.stack || event.reason?.message || event.reason);
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.js" crossorigin="anonymous"></script>
+  <script type="module" src="./src/phaser-preview/main.js"></script>
+</body>
+</html>
