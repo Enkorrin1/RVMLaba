@@ -60,6 +60,81 @@ function createPreviewGame() {
   });
 }
 
+function getActivePreviewScene(game) {
+  if (!game?.scene) {
+    return null;
+  }
+
+  const activeScenes = game.scene.getScenes(true);
+  return activeScenes.find((scene) => typeof scene.renderGameToTextState === "function") ?? null;
+}
+
+function nextAnimationFrame() {
+  return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+}
+
+function installPreviewAutomation(game) {
+  const host = window;
+
+  host.render_game_to_text = () => {
+    const scene = getActivePreviewScene(game);
+    if (!scene) {
+      return JSON.stringify({
+        coordinateSystem: "origin at top-left; x increases right; y increases downward",
+        scene: null,
+        status: "preview scene is not ready yet",
+      }, null, 2);
+    }
+
+    scene.syncHud?.();
+    return JSON.stringify(scene.renderGameToTextState(), null, 2);
+  };
+
+  host.advanceTime = async (ms = 1000 / 60) => {
+    const frames = Math.max(1, Math.round(ms / (1000 / 60)));
+
+    for (let index = 0; index < frames; index += 1) {
+      const scene = getActivePreviewScene(game);
+
+      if (!scene?.events) {
+        await nextAnimationFrame();
+        continue;
+      }
+
+      await new Promise((resolve) => {
+        let settled = false;
+
+        const finish = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          scene.events.off("postupdate", finish);
+          scene.syncHud?.();
+          resolve();
+        };
+
+        scene.events.once("postupdate", finish);
+
+        // Fallback for moments when the scene is transitioning and no update fires quickly.
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(finish);
+        });
+      });
+    }
+  };
+
+  host.__LAST_KEEPER_PREVIEW_TEST_API__ = {
+    getActiveSceneKey: () => getActivePreviewScene(game)?.scene?.key ?? null,
+    getState: () => {
+      const scene = getActivePreviewScene(game);
+      return scene?.renderGameToTextState?.() ?? null;
+    },
+    advanceTime: host.advanceTime,
+  };
+}
+
 window.__LAST_KEEPER_PHASER_PREVIEW__?.destroy(true);
 installPreviewDiagnostics();
 window.__LAST_KEEPER_PHASER_PREVIEW__ = createPreviewGame();
+installPreviewAutomation(window.__LAST_KEEPER_PHASER_PREVIEW__);

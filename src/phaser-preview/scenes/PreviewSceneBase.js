@@ -298,6 +298,7 @@ export class PreviewSceneBase extends Phaser.Scene {
       right: "D",
       jump: "W",
       interact: "E",
+      confirm: "ENTER",
       space: "SPACE",
       tab: "TAB",
       close: "ESC",
@@ -433,7 +434,7 @@ export class PreviewSceneBase extends Phaser.Scene {
     this.hoveredInteractable = null;
     this.interactionZones = interactables.slice();
 
-    this.keys.interact.on("down", () => {
+    const triggerInteraction = () => {
       if (this.overlayActive || this.sceneTransitionActive) {
         return;
       }
@@ -442,7 +443,10 @@ export class PreviewSceneBase extends Phaser.Scene {
       if (target) {
         handler(target);
       }
-    });
+    };
+
+    this.keys.interact.on("down", triggerInteraction);
+    this.keys.confirm.on("down", triggerInteraction);
 
     this.drawDebugHitboxes();
   }
@@ -701,6 +705,73 @@ export class PreviewSceneBase extends Phaser.Scene {
     }
 
     publishPreviewDiagnostics(this, this.session);
+  }
+
+  renderGameToTextState() {
+    const body = this.playerBody?.body;
+    const camera = this.cameras?.main;
+    const visibleInteractables = this.sceneInteractables
+      .filter((item) => this.isInteractableVisible(item))
+      .map((item) => {
+        const bounds = this.getInteractableBounds(item);
+        const centerX = bounds.x + bounds.width * 0.5;
+        const centerY = bounds.y + bounds.height * 0.5;
+        const distance = this.playerBody
+          ? Phaser.Math.Distance.Between(this.playerBody.x, this.playerBody.y, centerX, centerY)
+          : null;
+        const screenX = camera ? (centerX - camera.worldView.x) * camera.zoom : null;
+        const screenY = camera ? (centerY - camera.worldView.y) * camera.zoom : null;
+
+        return {
+          id: item.id,
+          prompt: item.prompt,
+          x: Math.round(bounds.x),
+          y: Math.round(bounds.y),
+          width: Math.round(bounds.width),
+          height: Math.round(bounds.height),
+          screenX: screenX == null ? null : Math.round(screenX),
+          screenY: screenY == null ? null : Math.round(screenY),
+          distanceFromPlayer: distance == null ? null : Math.round(distance),
+          inInteractionRange: distance != null ? distance <= this.sceneInteractionRange : false,
+        };
+      });
+
+    return {
+      coordinateSystem: "origin at top-left; x increases right; y increases downward",
+      scene: {
+        key: this.scene.key,
+        stage: this.session.stage,
+        label: this.getStageLabel(),
+      },
+      player: this.playerBody ? {
+        x: Math.round(this.playerBody.x),
+        y: Math.round(this.playerBody.y),
+        vx: Math.round(body?.velocity?.x ?? 0),
+        vy: Math.round(body?.velocity?.y ?? 0),
+        facing: this.playerBody.flipX ? "left" : "right",
+      } : null,
+      camera: camera ? {
+        x: Math.round(camera.worldView.x),
+        y: Math.round(camera.worldView.y),
+        width: Math.round(camera.worldView.width),
+        height: Math.round(camera.worldView.height),
+        zoom: Number(camera.zoom.toFixed(3)),
+      } : null,
+      objective: this.getObjectiveText(),
+      hint: this.session.currentHint,
+      inventory: this.session.inventory.map((itemId) => ({
+        id: itemId,
+        label: ITEM_DEFINITIONS[itemId]?.label ?? itemId,
+      })),
+      ui: {
+        overlayActive: this.overlayActive,
+        overlayKind: this.overlayKind,
+        prompt: this.promptContainer?.visible ? this.promptText?.text ?? "" : null,
+        messageVisible: this.messagePanel?.visible ?? false,
+        message: this.messagePanel?.visible ? this.messageText?.text ?? "" : null,
+      },
+      visibleInteractables,
+    };
   }
 
   getStageLabel() {

@@ -1,0 +1,23 @@
+{
+  "name": "rvmlaba",
+  "version": "1.0.0",
+  "description": "`Last Keeper` - это 2D браузерная игра с боковой камерой в стиле Terraria. Игрок управляет новым смотрителем маяка, который прибывает на удаленный остров после сильного шторма. Уже в самом начале становится понятно, что маяк находится в аварийном состоянии, прошлый смотритель исчез, а сам остров хранит следы недавних странных событий.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Enkorrin1/RVMLaba.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Enkorrin1/RVMLaba/issues"
+  },
+  "homepage": "https://github.com/Enkorrin1/RVMLaba#readme",
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}
