@@ -10,17 +10,35 @@
 <body class="phaser-preview-body">
   <main class="game-shell">
     <section class="preview-hud" aria-live="polite">
-      <p id="previewStage">Phaser Preview: комната смотрителя</p>
-      <p id="previewObjective">Стартовый vertical slice: переносим комнату смотрителя в новый визуальный уровень без потери логики.</p>
-      <p id="previewInventory">Инвентарь: пусто</p>
-      <p id="previewHint">A/D или стрелки для движения, W/Space для прыжка, E для взаимодействия.</p>
+      <section class="preview-stage-chip">
+        <span class="preview-stage-chip__label">Глава</span>
+        <p id="previewStage" class="preview-stage-chip__value">Комната смотрителя</p>
+      </section>
+
+      <section class="preview-story-card">
+        <span class="preview-story-card__label">Текущая цель</span>
+        <p id="previewObjective" class="preview-story-card__value">Осмотреть комнату и понять, что произошло до пробуждения.</p>
+      </section>
+
+      <section class="preview-hint-chip">
+        <span class="preview-hint-chip__label">Подсказка</span>
+        <p id="previewHint" class="preview-hint-chip__value">A/D или стрелки для движения, W/Space для прыжка, E для взаимодействия.</p>
+      </section>
     </section>
 
-    <p class="preview-badge">Скрытая preview-ветка. Основная игра не затронута.</p>
+    <section class="preview-meta" hidden aria-hidden="true">
+      <p id="previewSelected">Ничего не выбрано</p>
+      <p id="previewInventory">Инвентарь: пусто</p>
+      <p id="previewJournal">Пока пусто</p>
+      <p id="previewLead">Осмотрись и зафиксируй первую зацепку.</p>
+      <p id="previewControls">I / Tab - инвентарь, J - журнал, Esc - закрыть панель</p>
+    </section>
+
     <section id="previewRuntimeError" class="preview-runtime-error" hidden aria-live="assertive">
       <p class="preview-runtime-error__title">Preview runtime error</p>
       <pre id="previewRuntimeErrorText" class="preview-runtime-error__text"></pre>
     </section>
+
     <section id="game" class="preview-game-host" aria-label="Phaser preview сцена Last Keeper"></section>
   </main>
 

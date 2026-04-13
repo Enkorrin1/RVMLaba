@@ -49,9 +49,15 @@ export function createWakePlayer(scene) {
 
   scene.playerShadow = scene.add.ellipse(scene.playerBody.x, GROUND_Y + 10, 42, 14, 0x000000, 0.28).setDepth(9);
   scene.playerVisual = scene.add.container(scene.playerBody.x, scene.playerBody.y + 2).setDepth(10);
+  scene.playerOutline = scene.add.container(scene.playerBody.x, scene.playerBody.y + 2).setDepth(9.5);
+  const outlineHead = scene.add.rectangle(0, -24, 32, 34, 0xe7f0f4, 0.08);
+  const outlineCoat = scene.add.rectangle(0, 4, 44, 50, 0xe7f0f4, 0.08);
+  const outlineLegLeft = scene.add.rectangle(-8, 40, 12, 28, 0xe7f0f4, 0.08);
+  const outlineLegRight = scene.add.rectangle(8, 40, 12, 28, 0xe7f0f4, 0.08);
+  scene.playerOutline.add([outlineHead, outlineCoat, outlineLegLeft, outlineLegRight]);
   scene.playerHead = scene.add.rectangle(0, -24, 28, 30, 0xd9b48e, 1);
-  scene.playerCoat = scene.add.rectangle(0, 4, 38, 44, 0x2f4252, 1);
-  scene.playerScarf = scene.add.rectangle(0, -2, 24, 8, 0xc8a05b, 1);
+  scene.playerCoat = scene.add.rectangle(0, 4, 38, 44, 0x385364, 1);
+  scene.playerScarf = scene.add.rectangle(0, -2, 24, 8, 0xd6b06a, 1);
   scene.playerLegLeft = scene.add.rectangle(-8, 40, 10, 24, 0x6f4d38, 1);
   scene.playerLegRight = scene.add.rectangle(8, 40, 10, 24, 0x6f4d38, 1);
   scene.playerVisual.add([scene.playerHead, scene.playerCoat, scene.playerScarf, scene.playerLegLeft, scene.playerLegRight]);
@@ -104,11 +110,13 @@ export function updateWakeAmbient(scene, time) {
 }
 
 export function updateWakePlayerVisuals(scene) {
+  scene.playerOutline.setPosition(scene.playerBody.x, scene.playerBody.y + 2);
   scene.playerVisual.setPosition(scene.playerBody.x, scene.playerBody.y + 2);
   scene.playerShadow.setPosition(scene.playerBody.x, GROUND_Y + 10);
 
   const velocityX = scene.playerBody.body.velocity.x;
   if (Math.abs(velocityX) > 4) {
+    scene.playerOutline.scaleX = velocityX > 0 ? 1 : -1;
     scene.playerVisual.scaleX = velocityX > 0 ? 1 : -1;
   }
 
@@ -184,7 +192,7 @@ export function createItemIcon(scene, itemId, x, y, kind = "inventory") {
       scene.add.rectangle(kind === "inventory" ? -2 : -4, 0, kind === "inventory" ? 28 : 48, kind === "inventory" ? 5 : 6, 0x875c42, 1)
         .setAngle(-24),
       scene.add.arc(kind === "inventory" ? 12 : 22, kind === "inventory" ? -10 : -18, kind === "inventory" ? 9 : 15, 210, 20, false, 0xa1bac6, 1)
-        .setLineWidth(kind === "inventory" ? 3 : 4),
+        .setStrokeStyle(kind === "inventory" ? 3 : 4, 0xa1bac6, 1),
     ]);
   }
 
@@ -197,6 +205,7 @@ function createBackdrop(scene) {
   scene.add.rectangle(WORLD_WIDTH * 0.5, 168, WORLD_WIDTH, 450, 0x0d2232, 0.98);
   scene.add.rectangle(WORLD_WIDTH * 0.5, 252, WORLD_WIDTH, 320, 0x153449, 0.58);
   scene.add.rectangle(WORLD_WIDTH * 0.5, 322, WORLD_WIDTH, 160, 0x204f67, 0.12);
+  scene.add.ellipse(1640, 146, 1080, 220, 0x88b2c4, 0.04);
   scene.add.polygon(880, 474, [0, 126, 180, 16, 364, 120, 560, 54, 760, 132, 760, 250, 0, 250], 0x102536, 0.96);
   scene.add.polygon(1740, 468, [0, 150, 146, 24, 308, 116, 498, 46, 690, 132, 690, 252, 0, 252], 0x132d40, 0.9);
   scene.add.polygon(2520, 488, [0, 166, 206, 32, 438, 146, 758, 52, 1002, 168, 1002, 268, 0, 268], 0x0f2231, 0.92);
@@ -264,6 +273,18 @@ function createRoomShell(scene) {
       0.48
     );
     plank.setDepth(4);
+  }
+
+  for (let index = 0; index < 3; index += 1) {
+    const puddle = scene.add.ellipse(
+      wakeRoomVisual.innerX + 280 + index * 250,
+      wakeRoomVisual.floorY + 10 + (index % 2) * 4,
+      118 + index * 24,
+      18,
+      0xa6cad4,
+      0.06
+    );
+    puddle.setDepth(4);
   }
 
   createWindow(scene, wakeRoomVisual.innerX + 160, wakeRoomVisual.innerY + 82, 124, 148);
@@ -351,9 +372,11 @@ function createSetDressing(scene) {
   createDesk(scene, 1208, GROUND_Y);
   createLeafPile(scene, 1482, GROUND_Y);
   createDoor(scene, 1968, GROUND_Y);
-  createFootprints(scene, 1010, GROUND_Y);
+  createFootprints(scene, 1768, GROUND_Y);
   createLadder(scene, 1598, 458);
   createDeskExtras(scene, 1208, GROUND_Y);
+  createTravelChest(scene, 1672, GROUND_Y);
+  createWallHook(scene, 1786, 308);
 }
 
 function createBed(scene, x, groundY) {
@@ -368,19 +391,23 @@ function createBed(scene, x, groundY) {
 }
 
 function createDesk(scene, x, groundY) {
-  const desk = scene.add.container(x, groundY - 30).setDepth(7);
-  const shadow = scene.add.ellipse(0, 36, 220, 24, 0x000000, 0.22);
-  const top = scene.add.rectangle(0, 0, 198, 16, 0x6a513f, 1).setStrokeStyle(3, 0x2a211b, 0.42);
-  const back = scene.add.rectangle(0, 46, 198, 14, 0x4f3e31, 0.7);
-  const leftLeg = scene.add.rectangle(-78, 56, 12, 112, 0x413228, 1);
-  const rightLeg = scene.add.rectangle(78, 56, 12, 112, 0x413228, 1);
-  const drawer = scene.add.rectangle(22, 34, 90, 46, 0x735a47, 1).setStrokeStyle(2, 0x2e241d, 0.42);
-  const handle = scene.add.rectangle(22, 34, 24, 4, 0xdebf7a, 0.95);
-  desk.add([shadow, top, back, leftLeg, rightLeg, drawer, handle]);
+  const desk = scene.add.container(x, groundY - 46).setDepth(7);
+  const shadow = scene.add.ellipse(0, 58, 228, 24, 0x000000, 0.22);
+  const top = scene.add.rectangle(0, -18, 206, 18, 0x6a513f, 1).setStrokeStyle(3, 0x2a211b, 0.42);
+  const topLip = scene.add.rectangle(0, -8, 198, 8, 0x4d3c30, 0.92);
+  const leftSide = scene.add.rectangle(-84, 32, 18, 92, 0x46352a, 1);
+  const rightSide = scene.add.rectangle(84, 32, 18, 92, 0x46352a, 1);
+  const modesty = scene.add.rectangle(0, 36, 130, 18, 0x564334, 0.96);
+  const lowerRail = scene.add.rectangle(0, 72, 166, 10, 0x4a392d, 0.92);
+  const drawer = scene.add.rectangle(22, 14, 92, 48, 0x735a47, 1).setStrokeStyle(2, 0x2e241d, 0.42);
+  const handle = scene.add.rectangle(22, 14, 24, 4, 0xdebf7a, 0.95);
+  const footLeft = scene.add.rectangle(-84, 78, 22, 6, 0x2f241c, 0.95);
+  const footRight = scene.add.rectangle(84, 78, 22, 6, 0x2f241c, 0.95);
+  desk.add([shadow, top, topLip, leftSide, rightSide, modesty, lowerRail, drawer, handle, footLeft, footRight]);
 }
 
 function createDeskExtras(scene, x, groundY) {
-  const props = scene.add.container(x - 34, groundY - 56).setDepth(8);
+  const props = scene.add.container(x - 2, groundY - 72).setDepth(8);
   const lantern = scene.add.container(-26, 0);
   lantern.add([
     scene.add.rectangle(0, 14, 28, 34, 0x3a4347, 1).setStrokeStyle(2, 0xe0c17b, 0.22),
@@ -410,6 +437,27 @@ function createDryingRack(scene, x, y) {
   rack.add([rail, ropeA, ropeB, coat, cloth]);
 }
 
+function createTravelChest(scene, x, groundY) {
+  const chest = scene.add.container(x, groundY - 8).setDepth(7);
+  chest.add([
+    scene.add.ellipse(0, 16, 110, 18, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 88, 46, 0x4f3e31, 1).setStrokeStyle(3, 0x241b15, 0.38),
+    scene.add.rectangle(0, -8, 88, 14, 0x6a513f, 1),
+    scene.add.rectangle(-22, 0, 8, 46, 0x2f251e, 1),
+    scene.add.rectangle(22, 0, 8, 46, 0x2f251e, 1),
+    scene.add.circle(0, 2, 4, 0xd7c087, 1),
+  ]);
+}
+
+function createWallHook(scene, x, y) {
+  const hook = scene.add.container(x, y).setDepth(6);
+  hook.add([
+    scene.add.rectangle(0, 0, 18, 10, 0x4d3d31, 1),
+    scene.add.rectangle(0, 30, 4, 56, 0x8a7d67, 0.9),
+    scene.add.rectangle(18, 34, 30, 40, 0x364b5d, 0.86),
+  ]);
+}
+
 function createLeafPile(scene, x, groundY) {
   const pile = scene.add.container(x, groundY - 10).setDepth(7);
   const shadow = scene.add.ellipse(0, 18, 126, 22, 0x000000, 0.18);
@@ -430,15 +478,15 @@ function createDoor(scene, x, groundY) {
 }
 
 function createFootprints(scene, x, groundY) {
-  for (let index = 0; index < 9; index += 1) {
+  for (let index = 0; index < 5; index += 1) {
     scene.add.ellipse(
-      x + index * 34,
-      groundY - 10 + ((index % 2) ? 8 : 0),
+      x + index * 32,
+      groundY - 4 + ((index % 2) ? 8 : 0),
       18,
       10,
-      0x1f2528,
-      0.42
-    ).setAngle(-14).setDepth(6);
+      0x74614b,
+      0.72
+    ).setAngle(-14).setDepth(8);
   }
 }
 

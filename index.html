@@ -7,31 +7,7 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="game-shell">
-    <div class="ui-state" aria-hidden="true" hidden>
-      <p id="stage">Берег</p>
-      <p id="inventory">Пусто</p>
-      <p id="objective">Цель: добраться до маяка и понять, почему он не работает.</p>
-      <p id="hint">Управление: A/D или стрелки для движения, I для инвентаря, E для взаимодействия.</p>
-    </div>
-
-    <canvas id="game" width="1280" height="720" aria-label="Игровая сцена Last Keeper"></canvas>
-
-    <section id="chapterOverlay" class="chapter-overlay chapter-overlay--hidden" aria-live="polite">
-      <div class="chapter-overlay__card">
-        <p class="chapter-overlay__eyebrow">Глава завершена</p>
-        <h2 id="chapterTitle" class="chapter-overlay__title">Маяк снова горит</h2>
-        <p id="chapterText" class="chapter-overlay__text">
-          Луч маяка прорезал туман. Остров не стал безопаснее, но теперь у тебя есть путь дальше.
-        </p>
-        <button id="chapterButton" class="chapter-overlay__button" type="button">
-          Продолжить
-        </button>
-        <p class="chapter-overlay__hint">Нажми Enter или кнопку, чтобы перейти к следующей сцене.</p>
-      </div>
-    </section>
-  </main>
-
-  <script src="./src/main.js"></script>
+  <main id="app" class="game-shell"></main>
+  <script type="module" src="./src/boot.js"></script>
 </body>
 </html>

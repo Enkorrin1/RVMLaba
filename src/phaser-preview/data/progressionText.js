@@ -20,11 +20,19 @@ export function getGeneratorObjective(session) {
   }
 
   if (!generatorState.fuseInstalled) {
-    tasks.push(session.inventory.includes("fuse") ? "установить предохранитель" : "найти предохранитель");
+    if (generatorState.fuseSeated) {
+      tasks.push("зафиксировать предохранитель в направляющих");
+    } else {
+      tasks.push(session.inventory.includes("fuse") ? "вставить предохранитель" : "найти предохранитель");
+    }
   }
 
   if (!generatorState.valveWheelInstalled) {
-    tasks.push(session.inventory.includes("valveWheel") ? "установить штурвал клапана" : "найти штурвал клапана");
+    if (generatorState.valveWheelMounted) {
+      tasks.push("довернуть и зафиксировать штурвал клапана");
+    } else {
+      tasks.push(session.inventory.includes("valveWheel") ? "насадить штурвал клапана" : "найти штурвал клапана");
+    }
   }
 
   if (tasks.length === 0) {
@@ -43,8 +51,12 @@ export function getSurfaceObjective(session) {
     return getGeneratorObjective(session);
   }
 
+  if (!session.puzzleState.serviceHatch.released) {
+    return "Цель: вручную открыть служебный люк у основания башни.";
+  }
+
   if (!session.puzzleState.serviceConsole.batteryInstalled) {
-    return "Цель: вернуться к основанию башни и спуститься в служебный люк.";
+    return "Цель: спуститься в служебный люк и проверить нижний сервисный уровень.";
   }
 
   return "Цель: путь вниз открыт. Можно продолжать поиски под маяком.";
@@ -84,7 +96,7 @@ export function hasResolvedServiceScene(session) {
 
 export function getTunnelObjective(session) {
   if (!session.tunnelProgress.lockerOpened) {
-    return "Цель: осмотреть шкафчик смотрителя в тоннеле.";
+    return "Цель: осмотреть шкафчик в тоннеле.";
   }
 
   if (!session.tunnelProgress.signalFound) {

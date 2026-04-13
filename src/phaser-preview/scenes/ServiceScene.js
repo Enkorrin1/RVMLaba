@@ -34,17 +34,7 @@ export class ServiceScene extends PreviewSceneBase {
     createWakePlayer(this);
     this.placePlayer();
     this.createCamera();
-    this.createPromptBubble();
-    this.createWorldFocusMarker();
-    this.createMessagePanel();
-    this.createOverlayLayer();
-    this.createTransitionLayer();
-    this.createInventoryBar();
-    this.bindCommonKeys();
-    this.registerInteractables(serviceInteractables, (target) => this.handleInteraction(target));
-    this.bindCommonResize();
-    this.refreshInventoryBar();
-    this.syncHud();
+    this.setupSceneChrome(serviceInteractables, (target) => this.handleInteraction(target));
     this.playSceneIntro(
       "Служебный уровень",
       "Под башней всё звучит глуше: металл отзывается эхом, в воздухе висит сырость, а каждый рычаг и люк выглядят так, будто ими пользовались совсем недавно."
@@ -66,7 +56,7 @@ export class ServiceScene extends PreviewSceneBase {
   }
 
   getStageLabel() {
-    return "Phaser Preview: служебный уровень";
+    return "Служебный уровень";
   }
 
   getObjectiveText() {
@@ -85,6 +75,12 @@ export class ServiceScene extends PreviewSceneBase {
     switch (target.id) {
       case "logbook":
         if (!this.session.inventory.includes("logbook")) {
+          this.emitWorldPulse(target.x + target.width * 0.5, target.y + target.height * 0.5, {
+            color: 0xd7c59c,
+            radius: 18,
+            scale: 2.4,
+            duration: 620,
+          });
           this.addInventoryItem("logbook");
         }
         this.session.serviceProgress.logbookRead = true;
@@ -102,57 +98,47 @@ export class ServiceScene extends PreviewSceneBase {
       case "service-console":
         if (!this.session.puzzleState.serviceConsole.batteryInstalled) {
           if (this.session.selectedItemId === "battery") {
-            this.openConsoleBatteryOverlay();
+            this.focusOnInteractable(target, () => this.openConsoleBatteryOverlay(), {
+              zoom: 1.08,
+              duration: 180,
+              hold: 80,
+            });
           } else {
             this.showNarration(
               this.session.inventory.includes("battery")
                 ? "Пульт обесточен. Выбери батарею и установи её вручную."
-                : "Пульт обесточен. Нужна батарея из комнаты смотрителя."
+                : "Пульт обесточен. Нужна батарея из жилой комнаты наверху."
             );
           }
           break;
         }
 
         this.session.serviceProgress.consoleUsed = true;
-        this.openOverlay(
-          "Сервисный пульт",
-          "Экран ожил и показывает схему маяка. Восточный тоннель отмечен красным: проход заблокирован цепью уже с другой стороны."
-        );
-
-        this.overlayContent.add([
-          this.add.rectangle(0, 20, 430, 200, 0x15202a, 0.95).setStrokeStyle(3, 0x89b7c5, 0.18),
-          this.add.rectangle(-72, -8, 160, 96, 0x0d151b, 1).setStrokeStyle(2, 0x7bc6d3, 0.24),
-          this.add.rectangle(84, 18, 138, 132, 0x101920, 1).setStrokeStyle(2, 0xe1bb73, 0.18),
-          this.add.line(-72, -8, -58, -18, 18, -18, 18, 36, 0x8de0cf, 0.9).setLineWidth(3),
-          this.add.line(84, 18, 38, -10, 138, -10, 138, 58, 0xd46462, 0.9).setLineWidth(4),
-          this.add.circle(126, 58, 10, 0xd46462, 0.8),
-          this.add.text(-72, 74, "Схема внутренних линий", {
-            fontFamily: "Georgia, serif",
-            fontSize: "17px",
-            color: "#dce6e9",
-          }).setOrigin(0.5),
-          this.add.text(84, 98, "Тоннель заблокирован\nс восточной стороны", {
-            fontFamily: "Georgia, serif",
-            fontSize: "18px",
-            color: "#eadcc1",
-            align: "center",
-          }).setOrigin(0.5),
-        ]);
-        this.syncHud();
+        this.focusOnInteractable(target, () => this.openConsoleStatusOverlay(), {
+          zoom: 1.08,
+          duration: 180,
+          hold: 80,
+        });
         break;
       case "sealed-door":
         this.session.serviceProgress.doorChecked = true;
 
         if (!this.session.puzzleState.serviceDoor.panelOpened) {
           if (this.session.selectedItemId === "screwdriver") {
-            this.openScrewPanel({
-              title: "Щиток на цепи",
-              description: "Сними защитный щиток отвёрткой, чтобы добраться до цепи и запора на двери в тоннель.",
-              accent: 0x4c4138,
-              onComplete: () => {
-                this.session.puzzleState.serviceDoor.panelOpened = true;
-                this.showNarration("Щиток снят. Теперь видно саму цепь и механизм запора.");
-              },
+            this.focusOnInteractable(target, () => {
+              this.openScrewPanel({
+                title: "Щиток на цепи",
+                description: "Сними защитный щиток отвёрткой, чтобы добраться до цепи и запора на двери в тоннель.",
+                accent: 0x4c4138,
+                onComplete: () => {
+                  this.session.puzzleState.serviceDoor.panelOpened = true;
+                  this.showNarration("Щиток снят. Теперь видно саму цепь и механизм запора.");
+                },
+              });
+            }, {
+              zoom: 1.08,
+              duration: 180,
+              hold: 80,
             });
           } else {
             this.showNarration(
@@ -167,12 +153,18 @@ export class ServiceScene extends PreviewSceneBase {
         if (hasResolvedServiceScene(this.session)) {
           this.session.stage = "tunnel";
           this.session.progressStage = "tunnel";
-          this.transitionToScene(
-            "tunnel-preview",
-            { entry: "from-service" },
-            "Восточный тоннель",
-            "Цепь с грохотом падает на пол. За дверью начинается сырой ход под маяком."
-          );
+          this.focusOnInteractable(target, () => {
+            this.transitionToScene(
+              "tunnel-preview",
+              { entry: "from-service" },
+              "Восточный тоннель",
+              "Цепь с грохотом падает на пол. За дверью начинается сырой ход под маяком."
+            );
+          }, {
+            zoom: 1.08,
+            duration: 180,
+            hold: 90,
+          });
           break;
         }
 
@@ -340,6 +332,13 @@ export class ServiceScene extends PreviewSceneBase {
           this.session.puzzleState.serviceConsole.batteryInstalled = true;
           this.removeInventoryItem("battery");
           this.session.serviceProgress.consoleUsed = false;
+          this.cameras.main.shake(140, 0.0018);
+          this.emitWorldPulse(1406, 516, {
+            color: 0x8ad5db,
+            radius: 22,
+            scale: 2.8,
+            duration: 720,
+          });
           this.showNarration("Батарея встала в разъём. Пульт ожил и теперь показывает схему внутренних проходов.");
           this.time.delayedCall(360, () => {
             this.closeOverlay();
@@ -371,5 +370,52 @@ export class ServiceScene extends PreviewSceneBase {
       screenText,
       batteryToken,
     ]);
+  }
+
+  openConsoleStatusOverlay() {
+    this.openOverlay(
+      "Сервисный пульт",
+      "Экран ожил и показывает схему маяка. Восточный тоннель отмечен красным: проход заблокирован цепью уже с другой стороны."
+    );
+
+    const body = this.add.container(0, 24);
+    const frame = this.add.rectangle(0, 18, 470, 238, 0x15202a, 0.95).setStrokeStyle(3, 0x89b7c5, 0.18);
+    const monitor = this.add.rectangle(-88, -12, 180, 104, 0x0d151b, 1).setStrokeStyle(2, 0x7bc6d3, 0.24);
+    const scheme = this.add.rectangle(94, 22, 160, 142, 0x101920, 1).setStrokeStyle(2, 0xe1bb73, 0.18);
+    const leftPath = this.add.line(-88, -12, -66, -24, 22, -24, 22, 46, 0x8de0cf, 0.9).setStrokeStyle(3, 0x8de0cf, 0.9);
+    const blockedPath = this.add.line(94, 22, 36, -10, 148, -10, 148, 70, 0xd46462, 0.9).setStrokeStyle(4, 0xd46462, 0.9);
+    const blocker = this.add.circle(136, 70, 12, 0xd46462, 0.82);
+    const glow = this.add.circle(-88, -12, 46, 0x8ad5db, 0.06);
+    body.add([
+      frame,
+      monitor,
+      scheme,
+      glow,
+      leftPath,
+      blockedPath,
+      blocker,
+      this.add.text(-88, 78, "Схема внутренних линий", {
+        fontFamily: "Georgia, serif",
+        fontSize: "17px",
+        color: "#dce6e9",
+      }).setOrigin(0.5),
+      this.add.text(94, 108, "Тоннель заблокирован\nс восточной стороны", {
+        fontFamily: "Georgia, serif",
+        fontSize: "18px",
+        color: "#eadcc1",
+        align: "center",
+      }).setOrigin(0.5),
+    ]);
+    this.overlayContent.add(body);
+
+    this.tweens.add({
+      targets: glow,
+      alpha: 0.18,
+      duration: 760,
+      yoyo: true,
+      repeat: -1,
+      ease: "sine.inOut",
+    });
+    this.syncHud();
   }
 }

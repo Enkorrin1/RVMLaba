@@ -1,6 +1,6 @@
 import { createWakeSession } from "../data/wakeData.js";
 
-function createDefaultPreviewSession() {
+export function createDefaultPreviewSession() {
   return {
     stage: "wake",
     ...createWakeSession(),
@@ -38,8 +38,14 @@ function createDefaultPreviewSession() {
       },
       generator: {
         panelOpened: false,
+        fuseSeated: false,
         fuseInstalled: false,
+        valveWheelMounted: false,
+        valveWheelTurns: 0,
         valveWheelInstalled: false,
+      },
+      serviceHatch: {
+        released: false,
       },
       serviceConsole: {
         batteryInstalled: false,

@@ -15,8 +15,6 @@ import {
 import { PreviewSceneBase } from "./PreviewSceneBase.js";
 import { getPreviewSession } from "../state/previewSession.js";
 
-const Phaser = window.Phaser;
-
 export class BayScene extends PreviewSceneBase {
   constructor() {
     super("bay-preview");
@@ -36,17 +34,7 @@ export class BayScene extends PreviewSceneBase {
     createWakePlayer(this);
     this.placePlayer();
     this.createCamera();
-    this.createPromptBubble();
-    this.createWorldFocusMarker();
-    this.createMessagePanel();
-    this.createOverlayLayer();
-    this.createTransitionLayer();
-    this.createInventoryBar();
-    this.bindCommonKeys();
-    this.registerInteractables(bayInteractables, (target) => this.handleInteraction(target));
-    this.bindCommonResize();
-    this.refreshInventoryBar();
-    this.syncHud();
+    this.setupSceneChrome(bayInteractables, (target) => this.handleInteraction(target));
     this.playSceneIntro(
       "Скрытая бухта",
       "Здесь шторм почти не достаёт берега. Остались только костёр, тайник и свежие следы того, за кем мы идём."
@@ -68,7 +56,7 @@ export class BayScene extends PreviewSceneBase {
   }
 
   getStageLabel() {
-    return "Phaser Preview: скрытая бухта";
+    return "Скрытая бухта";
   }
 
   getObjectiveText() {
@@ -96,22 +84,30 @@ export class BayScene extends PreviewSceneBase {
         break;
       case "campfire":
         this.session.bayProgress.campSeen = true;
-        this.showNarration("Костёр давно погас, но камни вокруг ещё уложены аккуратно. Кто-то прятался здесь не одну ночь.");
+        this.focusOnInteractable(target, () => this.openCampfireOverlay(), {
+          zoom: 1.08,
+          duration: 180,
+          hold: 80,
+        });
         break;
       case "cache":
         this.session.bayProgress.cacheOpened = true;
-        this.showNarration(
-          hasResolvedBayScene(this.session)
-            ? "Под тентом спрятаны сухие карты и записка: «Если свет включится, встречаемся у северной бухты до рассвета»."
-            : "Под тентом спрятаны сухари, бинт и обрывок карты. Нужно осмотреть бухту внимательнее."
-        );
+        this.focusOnInteractable(target, () => this.openCacheOverlay(), {
+          zoom: 1.08,
+          duration: 180,
+          hold: 80,
+        });
         break;
       case "footprints":
         if (!hasResolvedBayScene(this.session)) {
           this.showNarration("Следы тянутся выше по скале, но картина пока неполная. Осмотри лагерь в бухте.");
           break;
         }
-        this.openFootprintAnalysisOverlay();
+        this.focusOnInteractable(target, () => this.openFootprintAnalysisOverlay(), {
+          zoom: 1.08,
+          duration: 180,
+          hold: 80,
+        });
         break;
       default:
         break;
@@ -146,7 +142,7 @@ export class BayScene extends PreviewSceneBase {
       status.setText(`Найдено улик: ${found} / 3`);
       this.showMessage(message);
       if (found === 3) {
-        const finalText = this.add.text(0, 188, "Теперь ясно: смотритель жив и ушёл к северной бухте совсем недавно.", {
+        const finalText = this.add.text(0, 188, "Теперь ясно: кто-то был здесь совсем недавно и ушёл к северной бухте.", {
           fontFamily: "Georgia, serif",
           fontSize: "22px",
           color: "#f2e8d7",
@@ -154,32 +150,47 @@ export class BayScene extends PreviewSceneBase {
           wordWrap: { width: 520 },
         }).setOrigin(0.5);
         this.overlayContent.add(finalText);
+        this.emitWorldPulse(1568, 558, {
+          color: 0xe1bb73,
+          radius: 20,
+          scale: 2.8,
+          duration: 760,
+        });
         this.showNarration("След почти прямой: смотритель ушёл к северной бухте совсем недавно.");
       }
     };
 
-    const bootPrint = this.add.ellipse(-156, 26, 44, 18, 0x1d2225, 0.58).setAngle(-28).setInteractive();
+    const bootPrint = this.add.ellipse(-156, 26, 44, 18, 0x1d2225, 0.58).setAngle(-28);
     const printGlow = this.add.ellipse(-156, 26, 66, 30, 0xe1bb73, 0.08).setAngle(-28);
-    bootPrint.on("pointerdown", () => {
-      printGlow.setFillStyle(0xe1bb73, 0.18);
-      registerClue("print", "Отпечаток глубокий и свежий. Значит, человек шёл быстро и совсем недавно.");
+    this.createOverlayRectHotspot(-156, 26, 74, 38, {
+      pointerover: () => printGlow.setFillStyle(0xe1bb73, 0.12),
+      pointerout: () => printGlow.setFillStyle(0xe1bb73, 0.08),
+      pointerdown: () => {
+        printGlow.setFillStyle(0xe1bb73, 0.18);
+        registerClue("print", "Отпечаток глубокий и свежий. Значит, человек шёл быстро и совсем недавно.");
+      },
     });
 
-    const cloth = this.add.triangle(26, -10, 0, 0, 34, 8, 8, 28, 0x8f7461, 1).setAngle(14).setInteractive();
+    const cloth = this.add.triangle(26, -10, 0, 0, 34, 8, 8, 28, 0x8f7461, 1).setAngle(14);
     const clothGlow = this.add.circle(26, -10, 28, 0xe1bb73, 0.08);
-    cloth.on("pointerdown", () => {
-      clothGlow.setFillStyle(0xe1bb73, 0.18);
-      registerClue("cloth", "Клочок ткани ещё влажный от солёного ветра. Его сорвало со снаряжения совсем недавно.");
+    this.createOverlayRectHotspot(26, -10, 60, 60, {
+      pointerover: () => clothGlow.setFillStyle(0xe1bb73, 0.12),
+      pointerout: () => clothGlow.setFillStyle(0xe1bb73, 0.08),
+      pointerdown: () => {
+        clothGlow.setFillStyle(0xe1bb73, 0.18);
+        registerClue("cloth", "Клочок ткани ещё влажный от солёного ветра. Его сорвало со снаряжения совсем недавно.");
+      },
     });
 
-    const route = this.add.line(0, 0, 174, 40, 238, -18, 0xc8e3ea, 0.9).setLineWidth(4).setInteractive(
-      new Phaser.Geom.Rectangle(160, -26, 92, 82),
-      Phaser.Geom.Rectangle.Contains
-    );
+    const route = this.add.line(0, 0, 174, 40, 238, -18, 0xc8e3ea, 0.9).setStrokeStyle(4, 0xc8e3ea, 0.9);
     const routeGlow = this.add.circle(206, 10, 34, 0xe1bb73, 0.08);
-    route.on("pointerdown", () => {
-      routeGlow.setFillStyle(0xe1bb73, 0.18);
-      registerClue("route", "Следы уходят вверх по сухой кромке скалы. Значит, путь ведёт дальше к северной бухте.");
+    this.createOverlayRectHotspot(206, 10, 104, 86, {
+      pointerover: () => routeGlow.setFillStyle(0xe1bb73, 0.12),
+      pointerout: () => routeGlow.setFillStyle(0xe1bb73, 0.08),
+      pointerdown: () => {
+        routeGlow.setFillStyle(0xe1bb73, 0.18);
+        registerClue("route", "Следы уходят вверх по сухой кромке скалы. Значит, путь ведёт дальше к северной бухте.");
+      },
     });
 
     this.tweens.add({
@@ -192,5 +203,53 @@ export class BayScene extends PreviewSceneBase {
     });
 
     this.overlayContent.add([printGlow, clothGlow, routeGlow, bootPrint, cloth, route]);
+  }
+
+  openCampfireOverlay() {
+    this.openOverlay(
+      "Потухший костёр",
+      "Костёр погас давно, но камни ещё сложены аккуратно. Здесь не случайная стоянка, а чьё-то укрытие на несколько ночей."
+    );
+
+    const body = this.add.container(0, 26);
+    const pit = this.add.ellipse(0, 44, 260, 90, 0x253039, 0.96).setStrokeStyle(3, 0x7f5d42, 0.18);
+    const emberA = this.add.circle(-18, 22, 14, 0x5c4939, 1);
+    const emberB = this.add.circle(12, 18, 16, 0x7f5d42, 1);
+    const emberGlow = this.add.ellipse(0, 18, 118, 38, 0xc8844a, 0.08);
+    body.add([pit, emberGlow, emberA, emberB]);
+    this.overlayContent.add(body);
+
+    this.tweens.add({
+      targets: emberGlow,
+      alpha: 0.16,
+      duration: 760,
+      yoyo: true,
+      repeat: -1,
+      ease: "sine.inOut",
+    });
+
+    this.showNarration("Костёр давно погас, но камни вокруг ещё уложены аккуратно. Кто-то прятался здесь не одну ночь.");
+  }
+
+  openCacheOverlay() {
+    this.openOverlay(
+      "Тайник под тентом",
+      "Под тентом спрятан аккуратный запас. Это уже не случайные вещи, а подготовленная точка отхода."
+    );
+
+    const body = this.add.container(0, 24);
+    const tarp = this.add.triangle(-26, -28, 0, 0, 110, 0, 54, -102, 0x6d8270, 0.8);
+    const crate = this.add.rectangle(16, 34, 142, 78, 0x6c533d, 1).setStrokeStyle(3, 0xd7c59c, 0.18);
+    const map = this.add.rectangle(-16, 22, 84, 46, 0xd8d0bd, 1).setStrokeStyle(2, 0x7a6a56, 0.32).setAngle(-10);
+    const bandage = this.add.rectangle(52, 18, 46, 18, 0xd7d3cb, 1).setAngle(8);
+    const ration = this.add.rectangle(72, 48, 30, 20, 0x8f7461, 1);
+    body.add([tarp, crate, map, bandage, ration]);
+    this.overlayContent.add(body);
+
+    this.showNarration(
+      hasResolvedBayScene(this.session)
+        ? "Под тентом спрятаны сухие карты и записка: «Если свет включится, встречаемся у северной бухты до рассвета»."
+        : "Под тентом спрятаны сухари, бинт и обрывок карты. Нужно осмотреть бухту внимательнее."
+    );
   }
 }

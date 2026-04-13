@@ -1,5 +1,8 @@
 export const LANTERN_WORLD_WIDTH = 2200;
 export const SHORE_WORLD_WIDTH = 3600;
+export const SHORE_PLAYABLE_LEFT = 500;
+export const SHORE_PLAYABLE_RIGHT = 3100;
+export const SHORE_PLAYABLE_WIDTH = SHORE_PLAYABLE_RIGHT - SHORE_PLAYABLE_LEFT;
 export const SERVICE_WORLD_WIDTH = 2400;
 export const TUNNEL_WORLD_WIDTH = 2400;
 export const PIER_WORLD_WIDTH = 2400;
@@ -15,6 +18,8 @@ export const lanternInteractables = [
     width: 84,
     height: 284,
     prompt: "Лестница вниз",
+    markerAnchor: { x: 776, y: 432 },
+    interactionPriority: 4,
   },
   {
     id: "lamp-mechanism",
@@ -23,17 +28,21 @@ export const lanternInteractables = [
     width: 190,
     height: 150,
     prompt: "Прожектор",
+    markerAnchor: { x: 1386, y: 404 },
+    interactionPriority: 3,
   },
 ];
 
 export const shoreInteractables = [
   {
     id: "lighthouse-door",
-    x: 920,
-    y: 447,
+    x: 880,
+    y: 419,
     width: 120,
     height: 182,
     prompt: "Вход в маяк",
+    markerAnchor: { x: 940, y: 406 },
+    interactionPriority: 1,
   },
   {
     id: "toolbox",
@@ -42,6 +51,8 @@ export const shoreInteractables = [
     width: 126,
     height: 48,
     prompt: "Инструментальный ящик",
+    markerAnchor: { x: 1330, y: 516 },
+    interactionPriority: 3,
   },
   {
     id: "radio",
@@ -50,6 +61,8 @@ export const shoreInteractables = [
     width: 74,
     height: 48,
     prompt: "Рация",
+    markerAnchor: { x: 1584, y: 492 },
+    interactionPriority: 2,
   },
   {
     id: "valve-wheel",
@@ -58,25 +71,33 @@ export const shoreInteractables = [
     width: 48,
     height: 48,
     prompt: "Штурвал клапана",
+    markerAnchor: { x: 2172, y: 510 },
+    interactionPriority: 4,
     visible(session) {
-      return !session.inventory.includes("valveWheel") && !session.puzzleState.generator.valveWheelInstalled;
+      return !session.inventory.includes("valveWheel")
+        && !session.puzzleState.generator.valveWheelMounted
+        && !session.puzzleState.generator.valveWheelInstalled;
     },
   },
   {
     id: "generator",
-    x: 2663,
-    y: 468,
-    width: 234,
-    height: 116,
+    x: 2628,
+    y: 438,
+    width: 308,
+    height: 156,
     prompt: "Генератор",
+    markerAnchor: { x: 2780, y: 446 },
+    interactionPriority: 5,
   },
   {
     id: "hatch",
-    x: 1068,
-    y: 514,
-    width: 52,
-    height: 52,
+    x: 1122,
+    y: 568,
+    width: 112,
+    height: 30,
     prompt: "Служебный люк",
+    markerAnchor: { x: 1178, y: 546 },
+    interactionPriority: 6,
     visible(session) {
       return session.endingUnlocked;
     },
@@ -91,6 +112,8 @@ export const serviceInteractables = [
     width: 64,
     height: 42,
     prompt: "Журнал дежурств",
+    markerAnchor: { x: 962, y: 512 },
+    interactionPriority: 2,
     visible(session) {
       return !session.inventory.includes("logbook");
     },
@@ -102,6 +125,8 @@ export const serviceInteractables = [
     width: 96,
     height: 24,
     prompt: "Люк наверх",
+    markerAnchor: { x: 1112, y: 528 },
+    interactionPriority: 5,
   },
   {
     id: "service-console",
@@ -110,6 +135,8 @@ export const serviceInteractables = [
     width: 124,
     height: 82,
     prompt: "Сервисный пульт",
+    markerAnchor: { x: 1408, y: 470 },
+    interactionPriority: 3,
   },
   {
     id: "sealed-door",
@@ -118,6 +145,8 @@ export const serviceInteractables = [
     width: 64,
     height: 170,
     prompt: "Запертая дверь",
+    markerAnchor: { x: 1688, y: 420 },
+    interactionPriority: 4,
   },
 ];
 
@@ -129,6 +158,7 @@ export const tunnelInteractables = [
     width: 58,
     height: 164,
     prompt: "Дверь на служебный уровень",
+    markerAnchor: { x: 734, y: 422 },
   },
   {
     id: "locker",
@@ -136,7 +166,8 @@ export const tunnelInteractables = [
     y: 529,
     width: 64,
     height: 46,
-    prompt: "Шкафчик смотрителя",
+    prompt: "Шкафчик персонала",
+    markerAnchor: { x: 1012, y: 510 },
   },
   {
     id: "signal",
@@ -145,6 +176,7 @@ export const tunnelInteractables = [
     width: 96,
     height: 90,
     prompt: "Аварийный передатчик",
+    markerAnchor: { x: 1460, y: 448 },
   },
   {
     id: "tunnel-exit",
@@ -153,6 +185,7 @@ export const tunnelInteractables = [
     width: 68,
     height: 170,
     prompt: "Выход к нижней пристани",
+    markerAnchor: { x: 1726, y: 422 },
   },
 ];
 
@@ -164,6 +197,7 @@ export const pierInteractables = [
     width: 48,
     height: 164,
     prompt: "Проход в тоннель",
+    markerAnchor: { x: 710, y: 422 },
   },
   {
     id: "skiff",
@@ -172,6 +206,7 @@ export const pierInteractables = [
     width: 130,
     height: 36,
     prompt: "Служебный ялик",
+    markerAnchor: { x: 1000, y: 524 },
   },
   {
     id: "rope-winch",
@@ -179,7 +214,8 @@ export const pierInteractables = [
     y: 437,
     width: 48,
     height: 130,
-    prompt: "Лебедка",
+    prompt: "Лебёдка",
+    markerAnchor: { x: 1360, y: 424 },
   },
   {
     id: "sea-gate",
@@ -188,6 +224,7 @@ export const pierInteractables = [
     width: 62,
     height: 164,
     prompt: "Морской створ",
+    markerAnchor: { x: 1724, y: 422 },
   },
 ];
 
@@ -199,6 +236,7 @@ export const bayInteractables = [
     width: 56,
     height: 164,
     prompt: "Тропа к пристани",
+    markerAnchor: { x: 722, y: 422 },
   },
   {
     id: "campfire",
@@ -206,7 +244,8 @@ export const bayInteractables = [
     y: 550,
     width: 36,
     height: 36,
-    prompt: "Потухший костер",
+    prompt: "Потухший костёр",
+    markerAnchor: { x: 1048, y: 530 },
   },
   {
     id: "cache",
@@ -215,6 +254,7 @@ export const bayInteractables = [
     width: 156,
     height: 110,
     prompt: "Тент и ящик",
+    markerAnchor: { x: 1288, y: 434 },
   },
   {
     id: "footprints",
@@ -223,5 +263,6 @@ export const bayInteractables = [
     width: 70,
     height: 22,
     prompt: "Следы на камнях",
+    markerAnchor: { x: 1603, y: 530 },
   },
 ];

@@ -6,6 +6,7 @@ import { TunnelScene } from "./scenes/TunnelScene.js";
 import { PierScene } from "./scenes/PierScene.js";
 import { BayScene } from "./scenes/BayScene.js";
 import { installPreviewDiagnostics } from "./dev/previewDiagnostics.js";
+import { resetPreviewSession } from "./state/previewSession.js";
 
 const Phaser = window.Phaser;
 const parent = document.getElementById("game");
@@ -76,8 +77,10 @@ function nextAnimationFrame() {
 function installPreviewAutomation(game) {
   const host = window;
 
+  const getScene = () => getActivePreviewScene(game);
+
   host.render_game_to_text = () => {
-    const scene = getActivePreviewScene(game);
+    const scene = getScene();
     if (!scene) {
       return JSON.stringify({
         coordinateSystem: "origin at top-left; x increases right; y increases downward",
@@ -124,13 +127,149 @@ function installPreviewAutomation(game) {
     }
   };
 
+  const interactById = (interactableId, { force = false } = {}) => {
+    const scene = getScene();
+    if (!scene?.sceneInteractionHandler) {
+      return { ok: false, reason: "scene interaction handler is unavailable" };
+    }
+
+    const target = scene.sceneInteractables?.find((item) => item.id === interactableId);
+    if (!target) {
+      return { ok: false, reason: `interactable "${interactableId}" was not found` };
+    }
+
+    if (!force && !scene.canReachInteractable(target, scene.sceneInteractionRange)) {
+      return { ok: false, reason: `interactable "${interactableId}" is out of range` };
+    }
+
+    scene.sceneInteractionHandler(target);
+    scene.syncHud?.();
+    return { ok: true, scene: scene.scene.key, interactableId };
+  };
+
+  const buildSyntheticPointer = (scene, x, y, isDown = false) => ({
+    x,
+    y,
+    worldX: x,
+    worldY: y,
+    isDown,
+    leftButtonDown: () => isDown,
+    rightButtonDown: () => false,
+    middleButtonDown: () => false,
+  });
+
+  const getOverlayHotspot = (scene, index) => scene?.overlayHotspots?.[index] ?? null;
+
+  const getOverlayPointerPosition = (hotspot, offsetX = 0, offsetY = 0) => ({
+    x: hotspot.x + offsetX,
+    y: hotspot.y + offsetY,
+  });
+
+  const triggerOverlayHotspot = (index = 0, { offsetX = 0, offsetY = 0 } = {}) => {
+    const scene = getScene();
+    const hotspot = getOverlayHotspot(scene, index);
+    if (!scene || !hotspot) {
+      return { ok: false, reason: `overlay hotspot "${index}" is unavailable` };
+    }
+
+    const position = getOverlayPointerPosition(hotspot, offsetX, offsetY);
+    const pointer = buildSyntheticPointer(scene, position.x, position.y, true);
+    hotspot.handlers?.pointerdown?.(pointer, hotspot);
+    scene.syncHud?.();
+    return { ok: true, scene: scene.scene.key, hotspotIndex: index, position };
+  };
+
+  const dragOverlayHotspot = (index = 0, path = []) => {
+    const scene = getScene();
+    const hotspot = getOverlayHotspot(scene, index);
+    if (!scene || !hotspot) {
+      return { ok: false, reason: `overlay hotspot "${index}" is unavailable` };
+    }
+
+    const points = Array.isArray(path) && path.length
+      ? path
+      : [{ x: 0, y: 0 }];
+
+    points.forEach((point, pointIndex) => {
+      const position = getOverlayPointerPosition(hotspot, point.x ?? 0, point.y ?? 0);
+      const pointer = buildSyntheticPointer(scene, position.x, position.y, true);
+
+      if (pointIndex === 0) {
+        hotspot.handlers?.pointerdown?.(pointer, hotspot);
+      }
+
+      hotspot.handlers?.pointermove?.(pointer, hotspot);
+    });
+
+    scene.syncHud?.();
+    return { ok: true, scene: scene.scene.key, hotspotIndex: index, points: points.length };
+  };
+
+  const movePlayerTo = (x, y) => {
+    const scene = getScene();
+    if (!scene?.playerBody) {
+      return { ok: false, reason: "player body is unavailable" };
+    }
+
+    scene.playerBody.setPosition(x, y);
+    scene.playerBody.body?.setVelocity?.(0, 0);
+    scene.syncHud?.();
+    return { ok: true, scene: scene.scene.key, player: { x, y } };
+  };
+
+  const closeOverlay = () => {
+    const scene = getScene();
+    if (!scene?.closeOverlay) {
+      return { ok: false, reason: "closeOverlay is unavailable" };
+    }
+
+    scene.closeOverlay();
+    scene.syncHud?.();
+    return { ok: true, scene: scene.scene.key };
+  };
+
+  const selectInventoryItem = (itemId) => {
+    const scene = getScene();
+    if (!scene?.session?.inventory?.includes(itemId)) {
+      return { ok: false, reason: `inventory item "${itemId}" is unavailable` };
+    }
+
+    scene.session.selectedItemId = itemId;
+    scene.refreshInventoryBar?.();
+    scene.syncHud?.();
+    return { ok: true, scene: scene.scene.key, itemId };
+  };
+
+  const resetPreview = () => {
+    resetPreviewSession();
+    game.scene.getScenes(true).forEach((scene) => scene.scene.restart?.());
+    return { ok: true };
+  };
+
   host.__LAST_KEEPER_PREVIEW_TEST_API__ = {
-    getActiveSceneKey: () => getActivePreviewScene(game)?.scene?.key ?? null,
+    getActiveSceneKey: () => getScene()?.scene?.key ?? null,
     getState: () => {
-      const scene = getActivePreviewScene(game);
+      const scene = getScene();
       return scene?.renderGameToTextState?.() ?? null;
     },
     advanceTime: host.advanceTime,
+    interactById,
+    triggerOverlayHotspot,
+    dragOverlayHotspot,
+    movePlayerTo,
+    closeOverlay,
+    selectInventoryItem,
+    resetPreview,
+    listOverlayHotspots: () => {
+      const scene = getScene();
+      return (scene?.overlayHotspots ?? []).map((hotspot, index) => ({
+        index,
+        x: Math.round(hotspot.x),
+        y: Math.round(hotspot.y),
+        width: Math.round(hotspot.width),
+        height: Math.round(hotspot.height),
+      }));
+    },
   };
 }
 

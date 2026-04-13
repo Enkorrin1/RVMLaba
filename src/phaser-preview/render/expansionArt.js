@@ -10,6 +10,7 @@ import {
 export function buildServiceEnvironment(scene) {
   scene.serviceDust = [];
   scene.serviceSteam = [];
+  scene.serviceLeakBands = [];
 
   scene.add.rectangle(SERVICE_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, SERVICE_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x050c13);
   scene.add.ellipse(1240, 126, 760, 220, 0x43657f, 0.08);
@@ -72,6 +73,19 @@ export function buildServiceEnvironment(scene) {
     scene.serviceSteam.push(steam);
   }
 
+  for (let index = 0; index < 5; index += 1) {
+    const leakBand = scene.add.rectangle(
+      840 + index * 168,
+      574 + (index % 2) * 10,
+      120 + index * 18,
+      10,
+      0x9bc6d2,
+      0.03
+    ).setDepth(5);
+    leakBand.phase = index * 0.62;
+    scene.serviceLeakBands.push(leakBand);
+  }
+
   shaftLight.setDepth(4);
   floorWash.setDepth(4);
 }
@@ -121,11 +135,17 @@ export function updateServiceAmbient(scene, time) {
   if (scene.serviceDoorLampHalo) {
     scene.serviceDoorLampHalo.alpha = 0.03 + Math.sin(time * 0.0021) * 0.02;
   }
+
+  scene.serviceLeakBands.forEach((band, index) => {
+    band.alpha = 0.02 + Math.sin(time * 0.0017 + band.phase) * 0.02 + 0.02;
+    band.width = 118 + Math.sin(time * 0.0014 + index) * 14 + index * 14;
+  });
 }
 
 export function buildTunnelEnvironment(scene) {
   scene.tunnelDrips = [];
   scene.tunnelMist = [];
+  scene.tunnelIndicatorBands = [];
 
   scene.add.rectangle(TUNNEL_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, TUNNEL_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x04080c);
   scene.add.ellipse(1220, 152, 860, 260, 0x29414f, 0.08);
@@ -178,6 +198,19 @@ export function buildTunnelEnvironment(scene) {
     scene.tunnelMist.push(haze);
   }
 
+  for (let index = 0; index < 4; index += 1) {
+    const indicator = scene.add.ellipse(
+      1460 + index * 20,
+      530 + (index % 2) * 8,
+      36,
+      10,
+      0x9fe0eb,
+      0.04
+    ).setDepth(7);
+    indicator.phase = index * 0.7;
+    scene.tunnelIndicatorBands.push(indicator);
+  }
+
   createTunnelProps(scene);
 }
 
@@ -212,10 +245,17 @@ export function updateTunnelAmbient(scene, time) {
   if (scene.tunnelRightGlow) {
     scene.tunnelRightGlow.alpha = 0.03 + Math.sin(time * 0.0021) * 0.02;
   }
+
+  scene.tunnelIndicatorBands.forEach((indicator, index) => {
+    indicator.alpha = 0.03 + Math.sin(time * 0.0028 + indicator.phase) * 0.03 + 0.02;
+    indicator.width = 28 + Math.sin(time * 0.0022 + index) * 10;
+  });
 }
 
 export function buildPierEnvironment(scene) {
   scene.pierWaveBands = [];
+  scene.pierRain = [];
+  scene.pierSpray = [];
 
   scene.add.rectangle(PIER_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, PIER_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x06141d);
   scene.add.rectangle(PIER_WORLD_WIDTH * 0.5, 144, PIER_WORLD_WIDTH, 300, 0x11293a, 0.94);
@@ -230,6 +270,26 @@ export function buildPierEnvironment(scene) {
     band.speed = 12 + index * 2;
     band.baseWidth = band.width;
     scene.pierWaveBands.push(band);
+  }
+
+  for (let index = 0; index < 16; index += 1) {
+    const streak = scene.add.rectangle(
+      620 + Math.random() * 1180,
+      142 + Math.random() * 320,
+      2,
+      42 + Math.random() * 16,
+      0xd7edf3,
+      0.14
+    ).setAngle(18).setDepth(4);
+    streak.speed = 5 + Math.random() * 2;
+    streak.resetY = 118 + Math.random() * 40;
+    scene.pierRain.push(streak);
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    const spray = scene.add.ellipse(980 + index * 220, 626 + (index % 2) * 8, 150, 18, 0xd7edf3, 0.06).setDepth(4);
+    spray.phase = index * 0.7;
+    scene.pierSpray.push(spray);
   }
 
   createPierProps(scene);
@@ -253,6 +313,18 @@ export function updatePierAmbient(scene, time) {
     }
   }
 
+  for (const streak of scene.pierRain) {
+    streak.y += streak.speed;
+    if (streak.y > 496) {
+      streak.y = streak.resetY;
+    }
+  }
+
+  scene.pierSpray.forEach((spray, index) => {
+    spray.alpha = 0.04 + Math.sin(time * 0.0021 + spray.phase) * 0.03 + 0.03;
+    spray.width = 140 + Math.sin(time * 0.0016 + index) * 18;
+  });
+
   if (scene.gateGlow) {
     scene.gateGlow.alpha = 0.04 + Math.sin(time * 0.0023) * 0.03;
   }
@@ -260,6 +332,8 @@ export function updatePierAmbient(scene, time) {
 
 export function buildBayEnvironment(scene) {
   scene.bayWaterBands = [];
+  scene.bayMist = [];
+  scene.bayFireGlow = [];
 
   scene.add.rectangle(BAY_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, BAY_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x06131a);
   scene.add.rectangle(BAY_WORLD_WIDTH * 0.5, 146, BAY_WORLD_WIDTH, 280, 0x102636, 0.94);
@@ -274,6 +348,25 @@ export function buildBayEnvironment(scene) {
     band.speed = 10 + index * 1.6;
     band.baseWidth = band.width;
     scene.bayWaterBands.push(band);
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    const haze = scene.add.ellipse(
+      980 + index * 150,
+      572 + (index % 2) * 10,
+      120 + index * 16,
+      24,
+      0xc3e6ec,
+      0.025
+    ).setDepth(6);
+    haze.phase = index * 0.7;
+    scene.bayMist.push(haze);
+  }
+
+  for (let index = 0; index < 3; index += 1) {
+    const emberGlow = scene.add.circle(1048 + index * 6, 564 + index * 2, 24 + index * 8, 0xc8844a, 0.03).setDepth(7);
+    emberGlow.phase = index * 0.8;
+    scene.bayFireGlow.push(emberGlow);
   }
 
   createBayProps(scene);
@@ -296,6 +389,17 @@ export function updateBayAmbient(scene, time) {
       band.x = -180;
     }
   }
+
+  scene.bayMist.forEach((haze, index) => {
+    haze.alpha = 0.018 + Math.sin(time * 0.0018 + haze.phase) * 0.015 + 0.02;
+    haze.x += Math.sin(time * 0.0012 + index) * 0.08;
+  });
+
+  scene.bayFireGlow.forEach((glow) => {
+    glow.alpha = 0.018 + Math.sin(time * 0.003 + glow.phase) * 0.02 + 0.02;
+    glow.scaleX = 1 + Math.sin(time * 0.002 + glow.phase) * 0.06;
+    glow.scaleY = 1 + Math.sin(time * 0.002 + glow.phase) * 0.06;
+  });
 }
 
 function createServiceProps(scene) {
@@ -311,7 +415,7 @@ function createServiceProps(scene) {
   hatch.add([
     scene.add.ellipse(0, 20, 154, 20, 0x000000, 0.2),
     scene.add.rectangle(0, 0, 102, 26, 0x44545d, 1).setStrokeStyle(3, 0x91a7b2, 0.24),
-    scene.add.arc(0, 2, 18, 200, -20, false, 0xd7c59c, 1).setLineWidth(4),
+    scene.add.arc(0, 2, 18, 200, -20, false, 0xd7c59c, 1).setStrokeStyle(4, 0xd7c59c, 1),
     scene.add.rectangle(0, 0, 70, 6, 0x28333a, 1),
   ]);
 
@@ -332,7 +436,7 @@ function createServiceProps(scene) {
     scene.add.ellipse(0, 74, 96, 16, 0x000000, 0.18),
     scene.add.rectangle(0, 0, 62, 170, 0x3b3028, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
     scene.add.rectangle(0, -12, 46, 38, 0x20262c, 1).setStrokeStyle(2, 0x8ea4af, 0.22),
-    scene.add.line(0, 0, -18, 4, 18, 4, 0xe0c27d, 1).setLineWidth(4),
+    scene.add.line(0, 0, -18, 4, 18, 4, 0xe0c27d, 1).setStrokeStyle(4, 0xe0c27d, 1),
     scene.add.rectangle(-28, -40, 18, 54, 0x4a4138, 1).setStrokeStyle(2, 0xd2b47b, 0.18),
   ]);
 }
@@ -393,7 +497,7 @@ function createPierProps(scene) {
   scene.add.container(1724, 520).setDepth(8).add([
     scene.add.ellipse(0, 70, 96, 16, 0x000000, 0.18),
     scene.add.rectangle(0, 0, 62, 164, 0x3a312a, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
-    scene.add.line(0, 0, -16, 0, 16, 0, 0xe0c27d, 1).setLineWidth(4),
+    scene.add.line(0, 0, -16, 0, 16, 0, 0xe0c27d, 1).setStrokeStyle(4, 0xe0c27d, 1),
   ]);
   scene.gateGlow = scene.add.circle(1724, 510, 18, 0x91cad8, 0.04).setDepth(7);
 }

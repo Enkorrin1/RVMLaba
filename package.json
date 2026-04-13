@@ -4,7 +4,12 @@
   "description": "`Last Keeper` - это 2D браузерная игра с боковой камерой в стиле Terraria. Игрок управляет новым смотрителем маяка, который прибывает на удаленный остров после сильного шторма. Уже в самом начале становится понятно, что маяк находится в аварийном состоянии, прошлый смотритель исчез, а сам остров хранит следы недавних странных событий.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "qa:preview:ui": "node scripts/preview-ui-smoke.mjs",
+    "qa:preview:prompt": "node scripts/preview-prompt-check.mjs",
+    "qa:preview:playability": "node scripts/preview-playability-check.mjs",
+    "qa:preview:route": "node scripts/preview-route-check.mjs",
+    "qa:preview:all": "node scripts/preview-regression-batch.mjs"
   },
   "repository": {
     "type": "git",

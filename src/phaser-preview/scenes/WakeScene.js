@@ -36,23 +36,15 @@ export class WakeScene extends PreviewSceneBase {
     createWakePlayer(this);
     this.placePlayer();
     this.createCamera();
-    this.createPromptBubble();
-    this.createWorldFocusMarker();
-    this.createMessagePanel();
-    this.createOverlayLayer();
-    this.createTransitionLayer();
-    this.createInventoryBar();
-    this.bindCommonKeys();
-    this.registerInteractables(interactables, (target) => this.handleInteraction(target));
-    this.bindCommonResize();
-    this.refreshInventoryBar();
-    this.syncHud();
-    this.playSceneIntro(
-      "Комната смотрителя",
-      this.entry === "spawn"
-        ? "Пробуждение начинается в тесной комнате под штормовой башней. Здесь лежат первые следы, первые инструменты и первые ответы."
-        : "Жилой ярус снова встречает запахом соли, сырого дерева и чьего-то недавнего присутствия."
-    );
+    this.setupSceneChrome(interactables, (target) => this.handleInteraction(target));
+
+    if (this.entry === "spawn") {
+      this.playSceneIntro(
+        "Жилая комната маяка",
+        "Ты приходишь в себя в тесной комнате маяка. Последнее, что помнится, это рыбацкая лодка, шторм и темнота."
+      );
+    } else {
+    }
   }
 
   update(time) {
@@ -65,13 +57,12 @@ export class WakeScene extends PreviewSceneBase {
     }
 
     this.updatePlayerMovement();
-    this.handleDoorThreshold();
     updateWakePlayerVisuals(this);
     this.updateScenePrompt();
   }
 
   getStageLabel() {
-    return "Phaser Preview: комната смотрителя";
+    return "Жилая комната маяка";
   }
 
   getObjectiveText() {
@@ -107,42 +98,34 @@ export class WakeScene extends PreviewSceneBase {
     );
   }
 
-  handleDoorThreshold() {
-    if (this.sceneTransitionActive || this.overlayActive) {
-      return;
-    }
-
-    const door = interactables.find((item) => item.id === "room-door");
-    if (!door) {
-      return;
-    }
-
-    const bounds = door.hitbox ?? door;
-    const bodyWidth = this.playerBody.body.width || 34;
-    const playerFrontX = this.playerBody.x + bodyWidth * 0.5;
-    const pushingThroughDoor = this.cursors.right.isDown || this.keys.right.isDown;
-    const touchingDoorway = playerFrontX >= bounds.x - 6;
-
-    if (touchingDoorway && pushingThroughDoor) {
-      this.session.wakeProgress.cluesChecked = true;
-      this.transitionOutside();
-    }
-  }
-
   handleInteraction(target) {
     switch (target.id) {
       case "clutter":
-        this.openDrawerOverlay();
+        this.focusOnInteractable(target, () => this.openDrawerOverlay(), {
+          zoom: 1.08,
+          duration: 180,
+          hold: 70,
+        });
         break;
       case "leaf-pile":
         if (this.session.wakeProgress.leavesMoved) {
           this.showNarration(getWakeInteractionText(this.session, target.id));
         } else {
-          this.openLeafInspectionOverlay();
+          this.focusOnInteractable(target, () => this.openLeafInspectionOverlay(), {
+            zoom: 1.07,
+            duration: 170,
+            hold: 70,
+          });
         }
         break;
       case "footprints-room":
         this.session.wakeProgress.cluesChecked = true;
+        this.emitWorldPulse(target.x + target.width * 0.5, target.y + target.height * 0.5, {
+          color: 0xd7c087,
+          radius: 18,
+          scale: 2.4,
+          duration: 560,
+        });
         this.showNarration(getWakeInteractionText(this.session, target.id));
         break;
       case "room-door":

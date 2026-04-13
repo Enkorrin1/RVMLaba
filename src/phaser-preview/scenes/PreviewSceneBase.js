@@ -7,8 +7,15 @@
 } from "../data/wakeData.js";
 import { createItemIcon } from "../render/wakeArt.js";
 import { publishPreviewDiagnostics } from "../dev/previewDiagnostics.js";
+import {
+  playPreviewUiTick,
+  playPreviewWorldCue,
+  resumePreviewAudio,
+  syncPreviewAmbience,
+} from "../audio/previewAudio.js";
 
 const Phaser = window.Phaser;
+const INVENTORY_BAR_BOTTOM_OFFSET = 74;
 
 export class PreviewSceneBase extends Phaser.Scene {
   constructor(key) {
@@ -28,6 +35,113 @@ export class PreviewSceneBase extends Phaser.Scene {
     this.pointerRoutingBound = false;
     this.debugHitboxesEnabled = false;
     this.hoveredOverlayHotspot = null;
+    this.cameraBeatActive = false;
+    this.sceneIntroActive = false;
+    this.selectedItemCaption = null;
+    this.inventoryMetaText = null;
+    this.windowKeyHandler = null;
+    this.resizeHandler = null;
+    this.pointerMoveHandler = null;
+    this.pointerDownHandler = null;
+  }
+
+  resetTransientSceneState() {
+    this.hoveredInteractable = null;
+    this.hoveredOverlayHotspot = null;
+    this.overlayKind = null;
+    this.overlayActive = false;
+    this.sceneTransitionActive = false;
+    this.cameraBeatActive = false;
+    this.clearOverlayHotspots();
+
+    if (this.messagePanel) {
+      this.messagePanel.setVisible(false);
+    }
+
+    if (this.dialogueBubble) {
+      this.dialogueBubble.setVisible(false);
+    }
+
+    if (this.promptContainer) {
+      this.promptContainer.setVisible(false);
+    }
+
+    if (this.focusMarker) {
+      this.focusMarker.setVisible(false);
+    }
+
+    if (this.overlayBackdrop) {
+      this.overlayBackdrop.setVisible(false).setAlpha(0);
+    }
+
+    if (this.overlayCard) {
+      this.overlayCard.setVisible(false).setAlpha(0).setScale(1).setY(this.scale.height * 0.5);
+    }
+
+    if (this.overlayTitle) {
+      this.overlayTitle.setVisible(false).setAlpha(0).setY(this.scale.height * 0.5 - 220);
+    }
+
+    if (this.overlayText) {
+      this.overlayText.setVisible(false).setAlpha(0).setY(this.scale.height * 0.5 - 176);
+    }
+
+    if (this.overlayHint) {
+      this.overlayHint.setVisible(false).setAlpha(0).setY(this.scale.height * 0.5 + 216);
+    }
+
+    if (this.overlayContent) {
+      this.overlayContent.setVisible(false).setAlpha(0).setScale(1).setY(this.scale.height * 0.5 + 18);
+      this.overlayContent.removeAll(true);
+    }
+
+    if (this.transitionShade) {
+      this.transitionShade.setVisible(false).setAlpha(0);
+    }
+
+    if (this.transitionAccent) {
+      this.transitionAccent.setVisible(false).setAlpha(0).setScale(1, 1);
+    }
+
+    if (this.transitionTitle) {
+      this.transitionTitle.setVisible(false).setAlpha(0);
+    }
+
+    if (this.transitionText) {
+      this.transitionText.setVisible(false).setAlpha(0);
+    }
+
+    this.sceneIntroActive = false;
+    this.restoreWorldCameraFollow();
+  }
+
+  teardownSceneBindings() {
+    if (this.pointerMoveHandler) {
+      this.input?.off?.("pointermove", this.pointerMoveHandler);
+      this.pointerMoveHandler = null;
+    }
+
+    if (this.pointerDownHandler) {
+      this.input?.off?.("pointerdown", this.pointerDownHandler);
+      this.pointerDownHandler = null;
+    }
+
+    if (this.windowKeyHandler) {
+      window.removeEventListener("keydown", this.windowKeyHandler);
+      this.windowKeyHandler = null;
+    }
+
+    if (this.resizeHandler) {
+      this.scale?.off?.("resize", this.resizeHandler);
+      this.resizeHandler = null;
+    }
+
+    if (this.keys) {
+      Object.values(this.keys).forEach((key) => key?.removeAllListeners?.());
+    }
+
+    this.input?.setDefaultCursor?.("default");
+    this.pointerRoutingBound = false;
   }
 
   initializeSharpTextFactory() {
@@ -66,9 +180,13 @@ export class PreviewSceneBase extends Phaser.Scene {
   }
 
   initializeUiCamera() {
-    if (this.uiCamera) {
+    const cameras = this.cameras?.cameras ?? [];
+    const uiCameraStillRegistered = this.uiCamera && cameras.includes(this.uiCamera);
+    if (uiCameraStillRegistered) {
       return;
     }
+
+    this.uiCamera = null;
 
     this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height, false, `${this.scene.key}-ui`);
     this.uiCamera.setScroll(0, 0);
@@ -96,6 +214,108 @@ export class PreviewSceneBase extends Phaser.Scene {
     camera.setDeadzone(deadzoneX, deadzoneY);
     camera.setZoom(1);
     camera.roundPixels = true;
+    this.defaultCameraLerp = { x: 0.12, y: 0.12 };
+    this.defaultCameraDeadzone = { x: deadzoneX, y: deadzoneY };
+  }
+
+  restoreWorldCameraFollow() {
+    const camera = this.cameras?.main;
+    if (!camera || !this.playerBody) {
+      return;
+    }
+
+    camera.stopFollow();
+    camera.setZoom(1);
+    camera.roundPixels = true;
+    camera.setDeadzone(this.defaultCameraDeadzone?.x ?? 160, this.defaultCameraDeadzone?.y ?? 90);
+    camera.startFollow(
+      this.playerBody,
+      true,
+      this.defaultCameraLerp?.x ?? 0.12,
+      this.defaultCameraLerp?.y ?? 0.12,
+    );
+    this.cameraBeatActive = false;
+  }
+
+  emitWorldPulse(x, y, {
+    color = 0xe1bb73,
+    radius = 26,
+    scale = 3.1,
+    duration = 720,
+    depth = 30,
+  } = {}) {
+    playPreviewWorldCue(color === 0xe1bb73 ? "generator" : "pulse");
+    const pulse = this.add.circle(x, y, radius, color, 0).setStrokeStyle(4, color, 0.92).setDepth(depth);
+    this.tweens.add({
+      targets: pulse,
+      scaleX: scale,
+      scaleY: scale,
+      alpha: 0,
+      duration,
+      ease: "quad.out",
+      onComplete: () => pulse.destroy(),
+    });
+    return pulse;
+  }
+
+  playFocusBeat({
+    x,
+    y,
+    zoom = 1.08,
+    duration = 180,
+    hold = 80,
+    returnDuration = 220,
+    shake = 0,
+    onPeak,
+    onComplete,
+  }) {
+    const camera = this.cameras?.main;
+    if (!camera || this.cameraBeatActive || this.sceneTransitionActive) {
+      onPeak?.();
+      onComplete?.();
+      return;
+    }
+
+    this.cameraBeatActive = true;
+    const currentZoom = camera.zoom;
+    camera.stopFollow();
+    if (shake > 0) {
+      camera.shake(duration + hold, shake);
+    }
+
+    camera.pan(x, y, duration, "Quad.easeOut", true);
+    this.tweens.add({
+      targets: camera,
+      zoom,
+      duration,
+      ease: "quad.out",
+      onComplete: () => {
+        onPeak?.();
+        this.time.delayedCall(hold, () => {
+          camera.pan(this.playerBody.x, this.playerBody.y, returnDuration, "Quad.easeInOut", true, undefined, () => {
+            camera.startFollow(this.playerBody, true, this.defaultCameraLerp?.x ?? 0.12, this.defaultCameraLerp?.y ?? 0.12);
+            this.cameraBeatActive = false;
+            onComplete?.();
+          });
+          this.tweens.add({
+            targets: camera,
+            zoom: currentZoom,
+            duration: returnDuration,
+            ease: "quad.inOut",
+          });
+        });
+      },
+    });
+  }
+
+  focusOnInteractable(target, onPeak, options = {}) {
+    const bounds = this.getInteractableBounds(target);
+    this.playFocusBeat({
+      x: bounds.x + bounds.width * 0.5,
+      y: bounds.y + bounds.height * 0.5,
+      onPeak,
+      ...options,
+    });
   }
 
   createPromptBubble() {
@@ -103,14 +323,16 @@ export class PreviewSceneBase extends Phaser.Scene {
     this.initializeUiCamera();
     this.createDebugHitboxLayer();
     this.promptContainer = this.add.container(0, 0).setDepth(50).setScrollFactor(0);
-    this.promptBackground = this.add.rectangle(0, 0, 0, 48, 0x111923, 0.94).setStrokeStyle(2, 0xe4bf77, 0.58);
+    this.promptBackground = this.add.rectangle(0, 0, 0, 48, 0x111923, 0.94)
+      .setOrigin(0, 0.5)
+      .setStrokeStyle(2, 0xe4bf77, 0.58);
     this.promptText = this.add.text(0, 0, "", {
       fontFamily: "Georgia, serif",
       fontSize: "18px",
       color: "#f4ead4",
-      padding: { left: 20, right: 20, top: 12, bottom: 12 },
-      align: "center",
-    }).setOrigin(0.5);
+      padding: { left: 0, right: 0, top: 10, bottom: 10 },
+      align: "left",
+    }).setOrigin(0, 0.5);
     this.promptContainer.add([this.promptBackground, this.promptText]);
     this.promptContainer.setVisible(false);
     this.registerUiObjects(this.promptContainer);
@@ -144,6 +366,47 @@ export class PreviewSceneBase extends Phaser.Scene {
     this.messagePanel.add([this.messageBackground, this.messageText, this.messageHint]);
     this.messagePanel.setVisible(false);
     this.registerUiObjects(this.messagePanel);
+  }
+
+  createDialogueBubble() {
+    this.dialogueBubble = this.add.container(0, 0).setDepth(65).setVisible(false);
+    this.dialogueBubbleBackground = this.add.rectangle(0, 0, 320, 98, 0xf3ead5, 0.96)
+      .setStrokeStyle(2, 0x2f2418, 0.22);
+    this.dialogueBubbleTail = this.add.triangle(-34, 42, 0, 0, 28, 0, 8, 24, 0xf3ead5, 0.96)
+      .setStrokeStyle(2, 0x2f2418, 0.22)
+      .setRotation(0.22);
+    this.dialogueBubbleNameplate = this.add.text(-126, -30, "Герой", {
+      fontFamily: "Georgia, serif",
+      fontSize: "14px",
+      color: "#6f5433",
+      fontStyle: "bold",
+    }).setOrigin(0, 0.5);
+    this.dialogueBubbleText = this.add.text(0, 4, "", {
+      fontFamily: "Georgia, serif",
+      fontSize: "18px",
+      color: "#1b2329",
+      align: "left",
+      wordWrap: { width: 244, useAdvancedWrap: true },
+      lineSpacing: 2,
+    }).setOrigin(0.5);
+
+    this.dialogueBubble.add([
+      this.dialogueBubbleBackground,
+      this.dialogueBubbleTail,
+      this.dialogueBubbleNameplate,
+      this.dialogueBubbleText,
+    ]);
+
+    this.tweens.add({
+      targets: this.dialogueBubble,
+      y: "-=4",
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: "sine.inOut",
+    });
+
+    this.registerUiObjects(this.dialogueBubble);
   }
 
   createWorldFocusMarker() {
@@ -237,7 +500,7 @@ export class PreviewSceneBase extends Phaser.Scene {
       align: "center",
       wordWrap: { width: Math.min(700, width - 140) },
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(92).setVisible(false);
-    this.overlayHint = this.add.text(width * 0.5, height * 0.5 + 216, "Esc, чтобы закрыть", {
+    this.overlayHint = this.add.text(width * 0.5, height * 0.5 + 244, "Esc, чтобы закрыть", {
       fontFamily: "Georgia, serif",
       fontSize: "16px",
       color: "#d8c18a",
@@ -254,19 +517,29 @@ export class PreviewSceneBase extends Phaser.Scene {
   }
 
   createInventoryBar() {
-    this.inventoryBar = this.add.container(this.scale.width * 0.5, this.scale.height - 86).setDepth(70).setScrollFactor(0);
+    this.inventoryBar = this.add.container(this.scale.width * 0.5, this.scale.height - INVENTORY_BAR_BOTTOM_OFFSET).setDepth(70).setScrollFactor(0);
     const backgroundWidth = 120 + (INVENTORY_SLOT_COUNT - 1) * 90;
-    this.inventoryBackground = this.add.rectangle(0, 0, backgroundWidth, 82, 0x0f151b, 0.9)
+    this.inventoryBackground = this.add.rectangle(0, 4, backgroundWidth, 96, 0x0f151b, 0.92)
       .setStrokeStyle(2, 0xe0ba73, 0.16);
-    this.inventoryHintLabel = this.add.text(0, -44, "I / Tab - инвентарь", {
+    this.selectedItemCaption = this.add.text(0, -84, "В руке: ничего", {
       fontFamily: "Georgia, serif",
       fontSize: "14px",
+      color: "#edf5ee",
+      align: "center",
+    }).setOrigin(0.5);
+    this.inventoryHintLabel = this.add.text(-122, -60, "1-9 / I / Tab — предметы", {
+      fontFamily: "Georgia, serif",
+      fontSize: "13px",
       color: "#d7c087",
       align: "center",
     }).setOrigin(0.5);
-    this.inventoryBackground.setInteractive({ useHandCursor: true });
-    this.inventoryBackground.on("pointerdown", () => this.handleInventoryKeyPress());
-    this.inventoryBar.add([this.inventoryHintLabel, this.inventoryBackground]);
+    this.inventoryMetaText = this.add.text(132, -60, "J — зацепки", {
+      fontFamily: "Georgia, serif",
+      fontSize: "13px",
+      color: "#8ea5ae",
+      align: "center",
+    }).setOrigin(0.5);
+    this.inventoryBar.add([this.inventoryBackground, this.selectedItemCaption, this.inventoryHintLabel, this.inventoryMetaText]);
     this.inventorySlots = [];
     this.registerUiObjects(this.inventoryBar);
 
@@ -291,7 +564,34 @@ export class PreviewSceneBase extends Phaser.Scene {
     this.refreshInventoryBar();
   }
 
+  setupSceneChrome(interactables, handler) {
+    this.teardownSceneBindings();
+    this.createPromptBubble();
+    this.createWorldFocusMarker();
+    this.createMessagePanel();
+    this.createDialogueBubble();
+    this.createOverlayLayer();
+    this.createTransitionLayer();
+    this.createInventoryBar();
+    this.resetTransientSceneState();
+    this.bindCommonKeys();
+    this.registerInteractables(interactables, handler);
+    this.bindCommonResize();
+    this.refreshInventoryBar();
+    this.syncHud();
+
+    this.events.on("update", this.updateDialogueBubblePosition, this);
+    this.events.once("shutdown", () => {
+      this.teardownSceneBindings();
+      this.events.off("update", this.updateDialogueBubblePosition, this);
+    });
+  }
+
   bindCommonKeys(extraHandler) {
+    if (this.keys) {
+      Object.values(this.keys).forEach((key) => key?.removeAllListeners?.());
+    }
+
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys({
       left: "A",
@@ -303,9 +603,12 @@ export class PreviewSceneBase extends Phaser.Scene {
       tab: "TAB",
       close: "ESC",
       inventory: "I",
+      journal: "J",
+      fullscreen: "F",
     });
 
     this.keys.close.on("down", () => {
+      resumePreviewAudio();
       this.closeOverlay();
     });
 
@@ -319,8 +622,23 @@ export class PreviewSceneBase extends Phaser.Scene {
     });
 
     this.keys.inventory.removeAllListeners("down");
-    this.keys.inventory.on("down", () => this.handleInventoryKeyPress());
-    this.keys.tab.on("down", () => this.handleInventoryKeyPress());
+    this.keys.inventory.on("down", () => {
+      resumePreviewAudio();
+      this.handleInventoryKeyPress();
+    });
+    this.keys.tab.on("down", () => {
+      resumePreviewAudio();
+      this.handleInventoryKeyPress();
+    });
+    this.keys.journal.on("down", () => {
+      resumePreviewAudio();
+      this.openJournalOverlay();
+    });
+    this.keys.fullscreen.on("down", () => {
+      resumePreviewAudio();
+      this.toggleFullscreen();
+    });
+    this.bindWindowKeyFallback();
     this.bindPointerRouting();
 
     if (extraHandler) {
@@ -334,29 +652,89 @@ export class PreviewSceneBase extends Phaser.Scene {
     }
 
     this.pointerRoutingBound = true;
-    this.input.on("pointermove", this.handlePointerMove, this);
-    this.input.on("pointerdown", this.handlePointerDown, this);
+    this.pointerMoveHandler = this.handlePointerMove.bind(this);
+    this.pointerDownHandler = (pointer) => {
+      resumePreviewAudio();
+      this.handlePointerDown(pointer);
+    };
+    this.input.on("pointermove", this.pointerMoveHandler);
+    this.input.on("pointerdown", this.pointerDownHandler);
 
     this.events.once("shutdown", () => {
-      this.input.off("pointermove", this.handlePointerMove, this);
-      this.input.off("pointerdown", this.handlePointerDown, this);
-      this.input.setDefaultCursor("default");
-      this.pointerRoutingBound = false;
+      this.teardownSceneBindings();
+    });
+  }
+
+  bindWindowKeyFallback() {
+    if (this.windowKeyHandler) {
+      return;
+    }
+
+    this.windowKeyHandler = (event) => {
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === "INPUT" || activeTag === "TEXTAREA") {
+        return;
+      }
+
+      if (event.key === "i" || event.key === "I" || event.key === "Tab") {
+        event.preventDefault();
+        resumePreviewAudio();
+        this.handleInventoryKeyPress();
+        return;
+      }
+
+      if (/^[1-9]$/.test(event.key)) {
+        event.preventDefault();
+        resumePreviewAudio();
+        this.handleInventoryDigitKeyPress(Number(event.key) - 1);
+        return;
+      }
+
+      if (event.key === "f" || event.key === "F") {
+        event.preventDefault();
+        resumePreviewAudio();
+        this.toggleFullscreen();
+        return;
+      }
+
+      if (event.key === "j" || event.key === "J") {
+        event.preventDefault();
+        resumePreviewAudio();
+        this.openJournalOverlay();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        resumePreviewAudio();
+        this.closeOverlay();
+      }
+    };
+
+    window.addEventListener("keydown", this.windowKeyHandler);
+    this.events.once("shutdown", () => {
+      if (this.windowKeyHandler) {
+        window.removeEventListener("keydown", this.windowKeyHandler);
+        this.windowKeyHandler = null;
+      }
     });
   }
 
   bindCommonResize() {
-    this.scale.on("resize", ({ width, height }) => {
+    if (this.resizeHandler) {
+      this.scale.off("resize", this.resizeHandler);
+    }
+
+    this.resizeHandler = ({ width, height }) => {
       if (this.uiCamera) {
         this.uiCamera.setViewport(0, 0, width, height);
         this.uiCamera.setSize(width, height);
       }
 
-      this.messagePanel.setPosition(width * 0.5, height - 210);
+      this.messagePanel.setPosition(width * 0.5, height - 260);
       this.messageBackground.width = Math.min(760, width - 60);
       this.messageText.setWordWrapWidth(Math.min(680, width - 120));
       this.promptContainer.setPosition(width * 0.5, 86);
-      this.inventoryBar.setPosition(width * 0.5, height - 86);
+      this.inventoryBar.setPosition(width * 0.5, height - INVENTORY_BAR_BOTTOM_OFFSET);
 
       if (this.overlayBackdrop) {
         this.overlayBackdrop.setPosition(width * 0.5, height * 0.5).setSize(width, height);
@@ -364,7 +742,7 @@ export class PreviewSceneBase extends Phaser.Scene {
         this.overlayTitle.setPosition(width * 0.5, height * 0.5 - 220);
         this.overlayText.setPosition(width * 0.5, height * 0.5 - 176);
         this.overlayText.setWordWrapWidth(Math.min(700, width - 140));
-        this.overlayHint.setPosition(width * 0.5, height * 0.5 + 216);
+        this.overlayHint.setPosition(width * 0.5, height * 0.5 + 244);
         this.overlayContent.setPosition(width * 0.5, height * 0.5 + 18);
         this.refreshOverlayHotspots();
       }
@@ -378,6 +756,14 @@ export class PreviewSceneBase extends Phaser.Scene {
       }
 
       this.drawDebugHitboxes();
+    };
+
+    this.scale.on("resize", this.resizeHandler);
+    this.events.once("shutdown", () => {
+      if (this.resizeHandler) {
+        this.scale.off("resize", this.resizeHandler);
+        this.resizeHandler = null;
+      }
     });
   }
 
@@ -404,23 +790,35 @@ export class PreviewSceneBase extends Phaser.Scene {
   getNearestInteractable(interactables, range = INTERACTION_RANGE) {
     let nearest = null;
     let bestDistance = Number.POSITIVE_INFINITY;
+    let bestPriority = Number.NEGATIVE_INFINITY;
+    let bestScore = Number.POSITIVE_INFINITY;
 
     for (const item of interactables) {
       if (item.visible && !item.visible(this.session)) {
         continue;
       }
 
-      const centerX = item.x + item.width * 0.5;
-      const centerY = item.y + item.height * 0.5;
-      const distance = Phaser.Math.Distance.Between(this.playerBody.x, this.playerBody.y, centerX, centerY);
+      const bounds = this.getInteractableBounds(item);
+      const nearestX = Phaser.Math.Clamp(this.playerBody.x, bounds.x, bounds.x + bounds.width);
+      const nearestY = Phaser.Math.Clamp(this.playerBody.y, bounds.y, bounds.y + bounds.height);
+      const distance = Phaser.Math.Distance.Between(this.playerBody.x, this.playerBody.y, nearestX, nearestY);
 
       if (distance > range) {
         continue;
       }
 
-      if (distance < bestDistance) {
+      const priority = this.getInteractablePriority(item);
+      const score = distance - priority * 18;
+
+      if (
+        score < bestScore
+        || (score === bestScore && priority > bestPriority)
+        || (score === bestScore && priority === bestPriority && distance < bestDistance)
+      ) {
         nearest = item;
         bestDistance = distance;
+        bestPriority = priority;
+        bestScore = score;
       }
     }
 
@@ -439,6 +837,7 @@ export class PreviewSceneBase extends Phaser.Scene {
         return;
       }
 
+      this.dismissSceneIntro();
       const target = this.getCurrentInteractionTarget();
       if (target) {
         handler(target);
@@ -455,23 +854,41 @@ export class PreviewSceneBase extends Phaser.Scene {
     return !item.visible || item.visible(this.session);
   }
 
+  getInteractablePriority(item) {
+    if (!item) {
+      return 0;
+    }
+
+    if (typeof item.interactionPriority === "function") {
+      return Number(item.interactionPriority(this.session) ?? 0);
+    }
+
+    return Number(item.interactionPriority ?? 0);
+  }
+
   canReachInteractable(item, range = this.sceneInteractionRange) {
     const bounds = this.getInteractableBounds(item);
-    const centerX = bounds.x + bounds.width * 0.5;
-    const centerY = bounds.y + bounds.height * 0.5;
-    return Phaser.Math.Distance.Between(this.playerBody.x, this.playerBody.y, centerX, centerY) <= range;
+    const nearestX = Phaser.Math.Clamp(this.playerBody.x, bounds.x, bounds.x + bounds.width);
+    const nearestY = Phaser.Math.Clamp(this.playerBody.y, bounds.y, bounds.y + bounds.height);
+    return Phaser.Math.Distance.Between(this.playerBody.x, this.playerBody.y, nearestX, nearestY) <= range;
   }
 
   syncInteractionZones() {
-    if (
-      this.hoveredInteractable
-      && (
-        this.overlayActive
-        || this.sceneTransitionActive
-        || !this.isInteractableVisible(this.hoveredInteractable)
-      )
-    ) {
+    if (this.overlayActive || this.sceneTransitionActive) {
       this.hoveredInteractable = null;
+    } else {
+      const pointer = this.input?.activePointer;
+      const pointerInsideCanvas = Boolean(
+        pointer
+        && pointer.x >= 0
+        && pointer.y >= 0
+        && pointer.x <= this.scale.width
+        && pointer.y <= this.scale.height
+      );
+
+      this.hoveredInteractable = pointerInsideCanvas
+        ? this.getInteractableAtPointer(pointer)
+        : null;
     }
 
     this.updatePointerCursor();
@@ -545,6 +962,7 @@ export class PreviewSceneBase extends Phaser.Scene {
       return;
     }
 
+    this.dismissSceneIntro();
     this.sceneInteractionHandler?.(target);
     this.drawDebugHitboxes();
   }
@@ -560,6 +978,18 @@ export class PreviewSceneBase extends Phaser.Scene {
 
   getInteractableBounds(item) {
     return item.hitbox ?? item;
+  }
+
+  getInteractableMarkerPoint(item) {
+    const bounds = this.getInteractableBounds(item);
+    if (item.markerAnchor) {
+      return item.markerAnchor;
+    }
+
+    return {
+      x: bounds.x + bounds.width * 0.5,
+      y: bounds.y - 16,
+    };
   }
 
   getInteractableAtPointer(pointer) {
@@ -666,15 +1096,20 @@ export class PreviewSceneBase extends Phaser.Scene {
     }
 
     this.promptText.setText(`[E / click] ${target.prompt}`);
-    this.promptBackground.width = Math.max(240, this.promptText.width + 44);
-    this.promptBackground.height = this.promptText.height + 22;
-    this.promptContainer.setPosition(this.scale.width * 0.5, 86);
+    this.promptBackground.width = Math.max(240, this.promptText.width + 40);
+    this.promptBackground.height = Math.max(44, this.promptText.height + 16);
+    this.promptBackground.setPosition(0, 0);
+    this.promptText.setPosition(18, 0);
+    this.promptContainer.setPosition(
+      Math.round((this.scale.width - this.promptBackground.width) * 0.5),
+      86
+    );
     this.promptContainer.setVisible(true);
 
     if (this.focusMarker) {
       this.focusMarker.setVisible(true);
-      const bounds = this.getInteractableBounds(target);
-      this.focusMarker.setPosition(bounds.x + bounds.width * 0.5, bounds.y - 16);
+      const markerPoint = this.getInteractableMarkerPoint(target);
+      this.focusMarker.setPosition(markerPoint.x, markerPoint.y);
     }
 
     this.drawDebugHitboxes();
@@ -685,6 +1120,10 @@ export class PreviewSceneBase extends Phaser.Scene {
     const objectiveNode = document.getElementById("previewObjective");
     const hintNode = document.getElementById("previewHint");
     const inventoryNode = document.getElementById("previewInventory");
+    const selectedNode = document.getElementById("previewSelected");
+    const journalNode = document.getElementById("previewJournal");
+    const leadNode = document.getElementById("previewLead");
+    const controlsNode = document.getElementById("previewControls");
 
     if (stageNode) {
       stageNode.textContent = this.getStageLabel();
@@ -704,7 +1143,29 @@ export class PreviewSceneBase extends Phaser.Scene {
         : "Инвентарь: пусто";
     }
 
+    if (selectedNode) {
+      selectedNode.textContent = this.session.selectedItemId
+        ? ITEM_DEFINITIONS[this.session.selectedItemId]?.label ?? "Неизвестный предмет"
+        : "Ничего не выбрано";
+    }
+
+    if (journalNode) {
+      const entries = this.getJournalEntries();
+      journalNode.textContent = entries.length
+        ? `${entries.length} запис${entries.length === 1 ? "ь" : entries.length < 5 ? "и" : "ей"} зафиксировано`
+        : "Пока пусто";
+    }
+
+    if (leadNode) {
+      leadNode.textContent = this.getLeadText();
+    }
+
+    if (controlsNode) {
+      controlsNode.textContent = "1-9 — предмет, I / Tab — инвентарь, J — журнал, F — fullscreen, Esc — закрыть";
+    }
+
     publishPreviewDiagnostics(this, this.session);
+    syncPreviewAmbience(this.session.stage);
   }
 
   renderGameToTextState() {
@@ -732,9 +1193,15 @@ export class PreviewSceneBase extends Phaser.Scene {
           screenX: screenX == null ? null : Math.round(screenX),
           screenY: screenY == null ? null : Math.round(screenY),
           distanceFromPlayer: distance == null ? null : Math.round(distance),
-          inInteractionRange: distance != null ? distance <= this.sceneInteractionRange : false,
+          inInteractionRange: this.canReachInteractable(item, this.sceneInteractionRange),
         };
       });
+
+    const journalEntries = this.getJournalEntries().map((entry) => entry.title);
+    const inventoryItems = this.session.inventory.map((itemId) => ({
+      id: itemId,
+      label: ITEM_DEFINITIONS[itemId]?.label ?? itemId,
+    }));
 
     return {
       coordinateSystem: "origin at top-left; x increases right; y increases downward",
@@ -759,19 +1226,69 @@ export class PreviewSceneBase extends Phaser.Scene {
       } : null,
       objective: this.getObjectiveText(),
       hint: this.session.currentHint,
-      inventory: this.session.inventory.map((itemId) => ({
-        id: itemId,
-        label: ITEM_DEFINITIONS[itemId]?.label ?? itemId,
-      })),
+      lead: this.getLeadText(),
+      inventory: {
+        selectedItemId: this.session.selectedItemId ?? null,
+        items: inventoryItems,
+      },
+      journal: {
+        count: journalEntries.length,
+        entries: journalEntries,
+      },
       ui: {
         overlayActive: this.overlayActive,
         overlayKind: this.overlayKind,
         prompt: this.promptContainer?.visible ? this.promptText?.text ?? "" : null,
         messageVisible: this.messagePanel?.visible ?? false,
         message: this.messagePanel?.visible ? this.messageText?.text ?? "" : null,
+        dialogueVisible: this.dialogueBubble?.visible ?? false,
+        dialogue: this.dialogueBubble?.visible ? this.dialogueBubbleText?.text ?? "" : null,
       },
       visibleInteractables,
+      progress: {
+        wake: this.session.wakeProgress,
+        lantern: this.session.lanternProgress,
+        shore: this.session.shoreProgress,
+        service: this.session.serviceProgress,
+        tunnel: this.session.tunnelProgress,
+        pier: this.session.pierProgress,
+        bay: this.session.bayProgress,
+        puzzleState: this.session.puzzleState,
+        endingUnlocked: this.session.endingUnlocked,
+        progressStage: this.session.progressStage,
+      },
     };
+  }
+
+  updateDialogueBubblePosition() {
+    if (!this.dialogueBubble?.visible || !this.playerBody) {
+      return;
+    }
+
+    const camera = this.cameras?.main;
+    if (!camera) {
+      return;
+    }
+
+    const facing = this.playerBody.flipX ? -1 : 1;
+    const screenX = (this.playerBody.x - camera.worldView.x) * camera.zoom;
+    const screenY = (this.playerBody.y - camera.worldView.y) * camera.zoom;
+    const bubbleWidth = this.dialogueBubbleBackground.width;
+    const bubbleHeight = this.dialogueBubbleBackground.height;
+    const offsetX = facing > 0
+      ? Math.max(92, bubbleWidth * 0.32)
+      : -Math.max(92, bubbleWidth * 0.32);
+    const offsetY = -Math.max(118, bubbleHeight * 0.72);
+    this.dialogueBubble.setPosition(screenX + offsetX, screenY + offsetY);
+    this.dialogueBubble.setScale(1, 1);
+
+    const contentWidth = Math.max(180, this.dialogueBubbleBackground.width - 40);
+    const tailOffset = Math.min(42, contentWidth * 0.22);
+    this.dialogueBubbleTail.setPosition(facing > 0 ? -tailOffset : tailOffset, (this.dialogueBubbleBackground.height * 0.5) - 6);
+    this.dialogueBubbleTail.setRotation(facing > 0 ? 0.22 : -0.22);
+    this.dialogueBubbleNameplate
+      .setOrigin(facing > 0 ? 0 : 1, 0.5)
+      .setPosition(facing > 0 ? (-contentWidth * 0.5) - 4 : (contentWidth * 0.5) + 4, -(this.dialogueBubbleBackground.height * 0.5) + 18);
   }
 
   getStageLabel() {
@@ -780,6 +1297,34 @@ export class PreviewSceneBase extends Phaser.Scene {
 
   getObjectiveText() {
     return "";
+  }
+
+  getLeadText() {
+    if (this.session.bayProgress?.cacheOpened) {
+      return "Под маяком была подготовлена точка отхода. Значит, всё это не авария, а продуманная цепочка действий.";
+    }
+
+    if (this.session.tunnelProgress?.signalFound) {
+      return "Сигнал и тоннель сходятся в одну линию: кто-то осознанно уходил к воде и оставлял ориентиры по пути.";
+    }
+
+    if (this.session.serviceProgress?.consoleUsed) {
+      return "Схема показывает, что проходы были заблокированы сознательно. Башню не просто бросили — её закрыли изнутри.";
+    }
+
+    if (this.session.shoreProgress?.radioChecked) {
+      return "Рация предупреждает о спуске вниз. Значит, настоящий конфликт и ответы находятся под башней, а не наверху.";
+    }
+
+    if (this.session.lanternProgress?.mechanismChecked) {
+      return "Прожектор мёртв не сам по себе. Поломка тянется вниз, к генератору и к тем, кто вмешивался в питание.";
+    }
+
+    if (this.session.wakeProgress?.cluesChecked) {
+      return "Следы в комнате подтверждают, что тебя принесли сюда после шторма. Кто-то был здесь недавно и ушёл в спешке.";
+    }
+
+    return "Осмотрись и зафиксируй первую зацепку. Верхний ярус должен объяснить, что здесь произошло до твоего пробуждения.";
   }
 
   showNarration(text) {
@@ -797,6 +1342,7 @@ export class PreviewSceneBase extends Phaser.Scene {
     this.refreshInventoryBar();
     this.pulseInventorySlot(itemId);
     this.syncHud();
+    playPreviewUiTick("select");
   }
 
   removeInventoryItem(itemId) {
@@ -810,6 +1356,7 @@ export class PreviewSceneBase extends Phaser.Scene {
 
     this.refreshInventoryBar();
     this.syncHud();
+    playPreviewUiTick("close");
   }
 
   refreshInventoryBar() {
@@ -831,6 +1378,23 @@ export class PreviewSceneBase extends Phaser.Scene {
         slotState.slot.add(slotState.icon);
       }
     });
+
+    if (this.selectedItemCaption) {
+      this.selectedItemCaption.setText(
+        this.session.selectedItemId
+          ? `В руке: ${ITEM_DEFINITIONS[this.session.selectedItemId]?.label ?? "неизвестно"}`
+          : "В руке: ничего"
+      );
+    }
+
+    if (this.inventoryMetaText) {
+      const entryCount = this.getJournalEntries().length;
+      this.inventoryMetaText.setText(
+        entryCount > 0
+          ? `J — зацепки (${entryCount})`
+          : "J — зацепки"
+      );
+    }
   }
 
   pulseInventorySlot(itemId) {
@@ -864,6 +1428,26 @@ export class PreviewSceneBase extends Phaser.Scene {
         : `${ITEM_DEFINITIONS[itemId].label}: выбран для следующего действия.`
     );
     this.syncHud();
+    playPreviewUiTick("select");
+  }
+
+  handleInventoryDigitKeyPress(index) {
+    if (this.sceneTransitionActive) {
+      return;
+    }
+
+    const slotState = this.inventorySlots[index];
+    if (!slotState) {
+      return;
+    }
+
+    if (!slotState.itemId) {
+      this.showMessage(`Слот ${index + 1} пуст.`);
+      playPreviewUiTick("close");
+      return;
+    }
+
+    this.handleInventorySlotClick(index);
   }
 
   handleInventoryKeyPress() {
@@ -874,81 +1458,147 @@ export class PreviewSceneBase extends Phaser.Scene {
       return;
     }
 
-    if (this.session.inventory.length === 0) {
-      this.showMessage("Инвентарь пока пуст.");
-      return;
-    }
-
     this.openInventoryOverlay();
   }
 
   openInventoryOverlay() {
     this.openOverlay(
       "Инвентарь",
-      "Выбери предмет для следующего действия. Записки и журналы можно открыть прямо отсюда."
+      "Здесь лежат найденные вещи, документы и ключевые инструменты. Выбирай предмет быстро, а читаемые записи открывай прямо отсюда."
     );
     this.overlayKind = "inventory";
-    const tray = this.add.rectangle(0, 34, 620, 250, 0x151c22, 0.9).setStrokeStyle(2, 0x7b8e95, 0.18);
-    this.overlayContent.add(tray);
-    this.session.inventory.forEach((itemId, index) => {
-      const x = this.session.inventory.length === 1 ? 0 : -180 + index * 180;
-      const card = this.add.container(x, 26).setSize(160, 180);
-      const isSelected = itemId === this.session.selectedItemId;
-      const background = this.add.rectangle(0, 0, 160, 180, 0x131920, 0.98)
-        .setStrokeStyle(3, isSelected ? 0xe1bb73 : 0x4b5b63, isSelected ? 0.78 : 0.28);
-      const title = this.add.text(0, -60, ITEM_DEFINITIONS[itemId].label, {
+    this.overlayHint.setText("Клик — взять или открыть, 1-9 — быстрый выбор, Esc — закрыть");
+    const tray = this.add.rectangle(0, -10, 680, 208, 0x151c22, 0.92).setStrokeStyle(2, 0x7b8e95, 0.18);
+    const hoverPanel = this.add.rectangle(0, 136, 680, 72, 0x10171d, 0.94).setStrokeStyle(2, 0xe1bb73, 0.16);
+    const hoverTitle = this.add.text(0, 116, "Наведи курсор на предмет", {
+      fontFamily: "Georgia, serif",
+      fontSize: "18px",
+      color: "#f4ead5",
+      fontStyle: "bold",
+      align: "center",
+    }).setOrigin(0.5);
+    const hoverText = this.add.text(0, 146, "Краткая подпись подскажет, зачем предмет нужен прямо сейчас и можно ли открыть его как документ.", {
+      fontFamily: "Georgia, serif",
+      fontSize: "14px",
+      color: "#aebdc3",
+      align: "center",
+      wordWrap: { width: 590 },
+    }).setOrigin(0.5);
+    this.overlayContent.add([tray, hoverPanel, hoverTitle, hoverText]);
+
+    if (!this.session.inventory.length) {
+      const emptyTitle = this.add.text(0, -8, "Пока пусто", {
         fontFamily: "Georgia, serif",
-        fontSize: "22px",
+        fontSize: "30px",
         color: "#f4ead5",
-        align: "center",
-        wordWrap: { width: 136 },
+        fontStyle: "bold",
       }).setOrigin(0.5);
-      const icon = createItemIcon(this, itemId, 0, -8, "overlay");
-      const description = this.add.text(0, 46, ITEM_DEFINITIONS[itemId].description, {
+      const emptyText = this.add.text(0, 48, "Здесь будут появляться найденные вещи и документы. Сначала осмотри комнату и стол у стены, чтобы заполнить первые слоты.", {
         fontFamily: "Georgia, serif",
-        fontSize: "14px",
+        fontSize: "17px",
         color: "#b9cad0",
         align: "center",
-        wordWrap: { width: 128 },
+        wordWrap: { width: 430 },
       }).setOrigin(0.5);
-      const action = this.add.text(0, 76, ITEM_DEFINITIONS[itemId].readable ? "Клик: открыть" : "Клик: выбрать", {
+      this.overlayContent.add([emptyTitle, emptyText]);
+      return;
+    }
+
+    this.session.inventory.forEach((itemId, index) => {
+      const columns = Math.min(3, this.session.inventory.length);
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      const rowCount = Math.ceil(this.session.inventory.length / columns);
+      const spacingX = columns === 1 ? 0 : 220;
+      const spacingY = 164;
+      const startX = columns === 1 ? 0 : -spacingX * ((columns - 1) * 0.5);
+      const startY = rowCount === 1 ? -22 : -48;
+      const x = startX + column * spacingX;
+      const y = startY + row * spacingY;
+      const card = this.add.container(x, y).setSize(180, 144);
+      const isSelected = itemId === this.session.selectedItemId;
+      const background = this.add.rectangle(0, 0, 180, 144, 0x131920, 0.98)
+        .setStrokeStyle(3, isSelected ? 0xe1bb73 : 0x4b5b63, isSelected ? 0.78 : 0.28);
+      const glint = this.add.rectangle(0, -69, 132, 18, isSelected ? 0xe1bb73 : 0x41505a, isSelected ? 0.22 : 0.12);
+      const title = this.add.text(0, -56, ITEM_DEFINITIONS[itemId].label, {
+        fontFamily: "Georgia, serif",
+        fontSize: "20px",
+        color: "#f4ead5",
+        align: "center",
+        wordWrap: { width: 148 },
+      }).setOrigin(0.5);
+      const icon = createItemIcon(this, itemId, 0, -4, "overlay");
+      const action = this.add.text(0, 48, ITEM_DEFINITIONS[itemId].readable ? "Открыть" : "Взять в руку", {
         fontFamily: "Georgia, serif",
         fontSize: "14px",
         color: "#d7c087",
       }).setOrigin(0.5);
-      card.add([background, title, icon, description, action]);
+      card.add([background, glint, title, icon, action]);
       this.overlayContent.add(card);
-      this.createOverlayRectHotspot(x, 26, 160, 180, {
-        pointerover: () => background.setStrokeStyle(3, 0xe1bb73, 0.82),
+      this.createOverlayRectHotspot(x, y, 180, 150, {
+        pointerover: () => {
+          if (!background.scene || !glint.scene || !hoverTitle.scene || !hoverText.scene || this.overlayKind !== "inventory") {
+            return;
+          }
+          background.setStrokeStyle(3, 0xe1bb73, 0.82);
+          glint.setFillStyle(0xe1bb73, 0.26);
+          hoverTitle.setText(ITEM_DEFINITIONS[itemId].label);
+          hoverText.setText(
+            ITEM_DEFINITIONS[itemId].readable
+              ? `${ITEM_DEFINITIONS[itemId].description} Клик откроет документ прямо здесь.`
+              : `${ITEM_DEFINITIONS[itemId].description} Клик возьмёт предмет в руку для следующего действия.`
+          );
+        },
         pointerout: () => {
+          if (!background.scene || !glint.scene || !hoverTitle.scene || !hoverText.scene || this.overlayKind !== "inventory") {
+            return;
+          }
           const selectedNow = itemId === this.session.selectedItemId;
           background.setStrokeStyle(3, selectedNow ? 0xe1bb73 : 0x4b5b63, selectedNow ? 0.78 : 0.28);
+          glint.setFillStyle(selectedNow ? 0xe1bb73 : 0x41505a, selectedNow ? 0.22 : 0.12);
+          hoverTitle.setText("Наведи курсор на предмет");
+          hoverText.setText("Краткая подпись подскажет, зачем предмет нужен прямо сейчас и можно ли открыть его как документ.");
         },
         pointerdown: () => {
+          if (this.overlayKind !== "inventory") {
+            return;
+          }
           this.session.selectedItemId = itemId;
           this.refreshInventoryBar();
           if (ITEM_DEFINITIONS[itemId].readable) {
+            playPreviewUiTick("read");
             this.openReadableItemOverlay(itemId);
             return;
           }
           this.closeOverlay();
           this.showNarration(`${ITEM_DEFINITIONS[itemId].label} выбран.`);
+          playPreviewUiTick("select");
         },
       });
     });
   }
-  openOverlay(title, description) {
+  openOverlay(title, description, hintText = "1-9 — сменить предмет, клик по активным зонам, Esc — закрыть") {
+    this.dismissSceneIntro();
+    this.overlayTransitionToken = (this.overlayTransitionToken ?? 0) + 1;
+    const transitionToken = this.overlayTransitionToken;
+    const cardTargetY = this.scale.height * 0.5;
+    const titleTargetY = this.scale.height * 0.5 - 220;
+    const textTargetY = this.scale.height * 0.5 - 176;
+    const hintTargetY = this.scale.height * 0.5 + 244;
+    const contentTargetY = this.scale.height * 0.5 + 18;
+
     this.overlayActive = true;
     this.overlayKind = "custom";
+    playPreviewUiTick("soft");
     this.syncInteractionZones();
     this.updatePrompt(null);
     this.clearOverlayHotspots();
     this.overlayBackdrop.setVisible(true).setAlpha(0);
-    this.overlayCard.setVisible(true).setScale(0.96).setAlpha(0);
-    this.overlayTitle.setVisible(true).setText(title).setAlpha(0);
-    this.overlayText.setVisible(true).setText(description).setAlpha(0);
-    this.overlayHint.setVisible(true).setAlpha(0);
-    this.overlayContent.setVisible(true).setScale(0.98).setAlpha(0);
+    this.overlayCard.setVisible(true).setScale(0.96).setAlpha(0).setY(cardTargetY + 18);
+    this.overlayTitle.setVisible(true).setText(title).setAlpha(0).setY(titleTargetY + 24);
+    this.overlayText.setVisible(true).setText(description).setAlpha(0).setY(textTargetY + 22);
+    this.overlayHint.setVisible(true).setText(hintText).setAlpha(0).setY(hintTargetY + 12);
+    this.overlayContent.setVisible(true).setScale(0.98).setAlpha(0).setY(contentTargetY + 26);
     this.overlayContent.removeAll(true);
 
     this.tweens.add({
@@ -964,7 +1614,42 @@ export class PreviewSceneBase extends Phaser.Scene {
       scaleY: 1,
       duration: 220,
       ease: "back.out",
-      onComplete: () => this.drawDebugHitboxes(),
+      onComplete: () => {
+        if (this.overlayTransitionToken !== transitionToken) {
+          return;
+        }
+        this.drawDebugHitboxes();
+      },
+    });
+    this.tweens.add({
+      targets: this.overlayCard,
+      y: cardTargetY,
+      duration: 220,
+      ease: "quad.out",
+    });
+    this.tweens.add({
+      targets: [this.overlayTitle],
+      y: titleTargetY,
+      duration: 220,
+      ease: "quad.out",
+    });
+    this.tweens.add({
+      targets: [this.overlayText],
+      y: textTargetY,
+      duration: 220,
+      ease: "quad.out",
+    });
+    this.tweens.add({
+      targets: [this.overlayHint],
+      y: hintTargetY,
+      duration: 220,
+      ease: "quad.out",
+    });
+    this.tweens.add({
+      targets: this.overlayContent,
+      y: contentTargetY,
+      duration: 220,
+      ease: "quad.out",
     });
   }
 
@@ -973,13 +1658,19 @@ export class PreviewSceneBase extends Phaser.Scene {
       return;
     }
 
+    this.overlayTransitionToken = (this.overlayTransitionToken ?? 0) + 1;
+    const transitionToken = this.overlayTransitionToken;
     this.overlayKind = null;
+    playPreviewUiTick("close");
     this.tweens.add({
       targets: this.overlayBackdrop,
       alpha: 0,
       duration: 140,
       ease: "quad.in",
       onComplete: () => {
+        if (this.overlayTransitionToken !== transitionToken) {
+          return;
+        }
         this.overlayActive = false;
         this.overlayBackdrop.setVisible(false);
       },
@@ -992,6 +1683,9 @@ export class PreviewSceneBase extends Phaser.Scene {
       duration: 140,
       ease: "quad.in",
       onComplete: () => {
+        if (this.overlayTransitionToken !== transitionToken) {
+          return;
+        }
         this.overlayCard.setVisible(false);
         this.overlayTitle.setVisible(false);
         this.overlayText.setVisible(false);
@@ -1000,8 +1694,14 @@ export class PreviewSceneBase extends Phaser.Scene {
         this.overlayContent.removeAll(true);
         this.clearOverlayHotspots();
         this.overlayCard.setScale(1);
+        this.overlayCard.setY(this.scale.height * 0.5);
+        this.overlayTitle.setY(this.scale.height * 0.5 - 220);
+        this.overlayText.setY(this.scale.height * 0.5 - 176);
+        this.overlayHint.setY(this.scale.height * 0.5 + 244);
         this.overlayContent.setScale(1);
+        this.overlayContent.setY(this.scale.height * 0.5 + 18);
         this.syncInteractionZones();
+        this.restoreWorldCameraFollow();
         this.drawDebugHitboxes();
       },
     });
@@ -1013,39 +1713,280 @@ export class PreviewSceneBase extends Phaser.Scene {
       return;
     }
 
-    this.openOverlay(item.documentTitle, "Документ из инвентаря. Текст сохранён из основной логики игры.");
+    this.openOverlay(
+      item.documentTitle,
+      "Документ из инвентаря. Пролистай содержание и вернись к маршруту, когда зацепка уложится в голове.",
+      "Esc — убрать документ"
+    );
 
+    const shadow = this.add.rectangle(12, 28, 544, 324, 0x000000, 0.24);
     const paper = this.add.rectangle(0, 20, 520, 300, 0xd8d0bd, 1).setStrokeStyle(2, 0x7a6a56, 0.38);
+    const paperGlow = this.add.rectangle(0, 20, 520, 300, 0xf4ead5, 0.06);
     const title = this.add.text(0, -94, item.documentTitle, {
       fontFamily: "Georgia, serif",
       fontSize: "26px",
       color: "#352b22",
       fontStyle: "bold",
     }).setOrigin(0.5);
+    const meta = this.add.text(0, -58, "Найдено в этом проходе. Можно перечитать в любой момент через инвентарь.", {
+      fontFamily: "Georgia, serif",
+      fontSize: "14px",
+      color: "#6a5d4e",
+      align: "center",
+      wordWrap: { width: 430 },
+    }).setOrigin(0.5);
     const body = this.add.text(0, 8, item.documentText, {
       fontFamily: "Georgia, serif",
-      fontSize: "22px",
+      fontSize: "20px",
       color: "#3f362e",
       align: "center",
       wordWrap: { width: 420 },
     }).setOrigin(0.5);
-    this.overlayContent.add([paper, title, body]);
+    this.overlayContent.add([shadow, paper, paperGlow, title, meta, body]);
+  }
+
+  getJournalEntries() {
+    const entries = [];
+
+    if (this.session.wakeProgress?.cluesChecked) {
+      entries.push({
+        title: "Следы в комнате",
+        text: "От кровати к лестнице и двери тянутся свежие следы. Значит, в башне кто-то был совсем недавно и ушёл в спешке.",
+      });
+    }
+
+    if (this.session.wakeProgress?.leavesMoved) {
+      entries.push({
+        title: "Листья у стены",
+        text: "Под мокрой кучей листьев оказался спрятан инструмент. Кто-то пытался быстро убрать следы подготовки к ремонту.",
+      });
+    }
+
+    if (this.session.lanternProgress?.mechanismChecked) {
+      entries.push({
+        title: "Прожектор",
+        text: "Фонарь не оживает не из-за линзы, а из-за питания. Поломка начинается ниже, у генератора и служебных контуров.",
+      });
+    }
+
+    if (this.session.shoreProgress?.radioChecked) {
+      entries.push({
+        title: "Рация",
+        text: "Рация шипит обрывками аварийного эфира. Береговая площадка явно использовалась уже после шторма.",
+      });
+    }
+
+    if (this.session.puzzleState?.generator?.fuseInstalled || this.session.puzzleState?.generator?.valveWheelInstalled) {
+      entries.push({
+        title: "Резервный генератор",
+        text: "Механизм оживает только после ручной сборки. Значит, поломка не случайна: кто-то разобрал узлы осознанно.",
+      });
+    }
+
+    if (this.session.serviceProgress?.logbookRead || this.session.inventory.includes("logbook")) {
+      entries.push({
+        title: "Журнал дежурств",
+        text: "Последние записи говорят о шагах у цистерны и о закрытом восточном тоннеле. Смотритель явно боялся того, что прячется внизу.",
+      });
+    }
+
+    if (this.session.serviceProgress?.consoleUsed) {
+      entries.push({
+        title: "Сервисный пульт",
+        text: "Питание нижнего контура нестабильно, но схема маяка жива. Путь вниз открывает не одна поломка, а целая цепочка вмешательств.",
+      });
+    }
+
+    if (this.session.tunnelProgress?.signalFound) {
+      entries.push({
+        title: "Аварийный сигнал",
+        text: "Источник сигнала не случаен. Тоннель словно специально оставили в полуживом состоянии, чтобы кто-то всё же спустился дальше.",
+      });
+    }
+
+    if (this.session.pierProgress?.ropeFound) {
+      entries.push({
+        title: "Пристань",
+        text: "Лебёдка и ялик подсказывают, что к морскому створу кто-то подходил вручную. Это не место случайной аварии, а точка доступа.",
+      });
+    }
+
+    if (this.session.bayProgress?.campSeen || this.session.bayProgress?.cacheOpened) {
+      entries.push({
+        title: "Скрытая бухта",
+        text: "Костёр, тайник и следы подтверждают: под маяком скрывались и работали. Нижний маршрут был нужен кому-то как укрытие.",
+      });
+    }
+
+    return entries;
+  }
+
+  openJournalOverlay() {
+    if (this.overlayActive) {
+      if (this.overlayKind === "journal") {
+        this.closeOverlay();
+      }
+      return;
+    }
+
+    const entries = this.getJournalEntries();
+
+    this.openOverlay(
+      "Журнал находок",
+      "Здесь остаются только ключевые выводы, чтобы быстро восстановить маршрут и причинно-следственные связи.",
+      "Esc — закрыть журнал"
+    );
+    this.overlayKind = "journal";
+
+    const frame = this.add.rectangle(0, 26, 708, 308, 0x141b22, 0.92).setStrokeStyle(2, 0x7b8e95, 0.18);
+    const summaryBand = this.add.rectangle(0, -90, 644, 56, 0x10161c, 0.96).setStrokeStyle(2, 0xe1bb73, 0.14);
+    const summaryTitle = this.add.text(-292, -102, "Текущая версия событий", {
+      fontFamily: "Georgia, serif",
+      fontSize: "17px",
+      color: "#f4ead5",
+      fontStyle: "bold",
+    }).setOrigin(0, 0.5);
+    const summaryText = this.add.text(-292, -74, this.getLeadText(), {
+      fontFamily: "Georgia, serif",
+      fontSize: "13px",
+      color: "#b7c9cf",
+      wordWrap: { width: 584, useAdvancedWrap: true },
+    }).setOrigin(0, 0.5);
+    this.overlayContent.add([frame, summaryBand, summaryTitle, summaryText]);
+
+    if (!entries.length) {
+      const emptyTitle = this.add.text(0, 4, "Журнал пока пуст", {
+        fontFamily: "Georgia, serif",
+        fontSize: "30px",
+        color: "#f4ead5",
+        fontStyle: "bold",
+      }).setOrigin(0.5);
+      const emptyText = this.add.text(0, 62, "Как только ты осмотришь первые улики, здесь соберутся краткие выводы. Пока лучший следующий шаг — изучить комнату и найти первую аномалию.", {
+        fontFamily: "Georgia, serif",
+        fontSize: "16px",
+        color: "#b7c9cf",
+        align: "center",
+        wordWrap: { width: 480 },
+      }).setOrigin(0.5);
+      this.overlayContent.add([emptyTitle, emptyText]);
+      return;
+    }
+
+    const visibleEntries = entries.slice(-4);
+    visibleEntries.forEach((entry, index) => {
+      const y = -12 + index * 66;
+      const chip = this.add.rectangle(0, y, 640, 58, 0x10161c, 0.96).setStrokeStyle(2, 0xe1bb73, 0.18);
+      const title = this.add.text(-292, y - 12, entry.title, {
+        fontFamily: "Georgia, serif",
+        fontSize: "17px",
+        color: "#f4ead5",
+        fontStyle: "bold",
+      }).setOrigin(0, 0.5);
+      const body = this.add.text(-292, y + 10, entry.text, {
+        fontFamily: "Georgia, serif",
+        fontSize: "13px",
+        color: "#b7c9cf",
+        wordWrap: { width: 584, useAdvancedWrap: true },
+      }).setOrigin(0, 0.5);
+      this.overlayContent.add([chip, title, body]);
+    });
+
+    if (entries.length > visibleEntries.length) {
+      const hiddenCount = entries.length - visibleEntries.length;
+      const footer = this.add.text(0, 142, `Ещё ${hiddenCount} ранн${hiddenCount === 1 ? "яя зацепка" : hiddenCount < 5 ? "ие зацепки" : "их зацепок"} уже сохранен${hiddenCount === 1 ? "а" : "о"} выше по маршруту.`, {
+        fontFamily: "Georgia, serif",
+        fontSize: "14px",
+        color: "#8ea5ae",
+        align: "center",
+        wordWrap: { width: 560 },
+      }).setOrigin(0.5);
+      this.overlayContent.add(footer);
+    }
   }
 
   showMessage(text) {
-    this.messageText.setText(text);
-    this.messagePanel.setVisible(true);
+    const wrapped = String(text ?? "").trim();
+    if (!wrapped) {
+      this.messagePanel?.setVisible(false);
+      this.dialogueBubble?.setVisible(false);
+      return;
+    }
+
+    this.messageText.setText(wrapped);
+    this.messagePanel.setVisible(false);
+    this.dialogueBubbleText.setText(wrapped);
+    this.dialogueBubbleText.setWordWrapWidth(244);
+
+    const contentWidth = Math.max(220, Math.min(280, this.dialogueBubbleText.width + 36));
+    const contentHeight = Math.max(54, this.dialogueBubbleText.height + 30);
+    this.dialogueBubbleBackground.setSize(contentWidth + 40, contentHeight + 24);
+    this.dialogueBubbleText.setPosition(0, 6);
+    this.dialogueBubbleNameplate.setPosition((-contentWidth * 0.5) - 4, (-contentHeight * 0.5) - 8);
+    this.dialogueBubbleTail.setPosition(-Math.min(42, contentWidth * 0.22), (contentHeight * 0.5) + 6);
+    this.dialogueBubble.setVisible(true).setAlpha(1);
+    this.updateDialogueBubblePosition();
+
     if (this.hideMessageEvent) {
       this.time.removeEvent(this.hideMessageEvent);
     }
     this.hideMessageEvent = this.time.delayedCall(2800, () => {
-      this.messagePanel.setVisible(false);
+      this.dialogueBubble?.setVisible(false);
+      this.messagePanel?.setVisible(false);
     });
+  }
+
+  dismissSceneIntro() {
+    if (!this.sceneIntroActive || this.sceneTransitionActive) {
+      return;
+    }
+
+    this.sceneIntroActive = false;
+    this.tweens.killTweensOf([
+      this.transitionShade,
+      this.transitionAccent,
+      this.transitionTitle,
+      this.transitionText,
+    ]);
+
+    this.transitionShade?.setVisible(false).setAlpha(0);
+    this.transitionAccent?.setVisible(false).setAlpha(0).setScale(1, 1);
+    this.transitionTitle?.setVisible(false).setAlpha(0);
+    this.transitionText?.setVisible(false).setAlpha(0);
+  }
+
+  toggleFullscreen() {
+    if (!this.scale) {
+      return;
+    }
+
+    try {
+      if (this.scale.isFullscreen) {
+        this.scale.stopFullscreen();
+        this.showMessage("Полноэкранный режим выключен.");
+      } else {
+        this.scale.startFullscreen();
+        this.showMessage("Полноэкранный режим включен.");
+      }
+    } catch {
+      this.showMessage("Браузер не дал переключить полноэкранный режим.");
+    }
   }
 
   playSceneIntro(title, text, hold = 760) {
     if (!this.transitionShade) {
       return;
+    }
+
+    this.sceneIntroActive = true;
+
+    if (this.cameras?.main) {
+      this.cameras.main.setZoom(1.04);
+      this.tweens.add({
+        targets: this.cameras.main,
+        zoom: 1,
+        duration: hold + 520,
+        ease: "sine.out",
+      });
     }
 
     this.tweens.killTweensOf([
@@ -1056,9 +1997,9 @@ export class PreviewSceneBase extends Phaser.Scene {
     ]);
 
     this.transitionShade.setVisible(true).setAlpha(0);
-    this.transitionAccent.setVisible(true).setAlpha(0);
-    this.transitionTitle.setVisible(true).setAlpha(0).setText(title);
-    this.transitionText.setVisible(true).setAlpha(0).setText(text);
+    this.transitionAccent.setVisible(true).setAlpha(0).setScale(0.72, 1);
+    this.transitionTitle.setVisible(true).setAlpha(0).setText(title).setY(this.scale.height * 0.5 - 48);
+    this.transitionText.setVisible(true).setAlpha(0).setText(text).setY(this.scale.height * 0.5 + 34);
 
     this.tweens.add({
       targets: [this.transitionShade],
@@ -1080,6 +2021,7 @@ export class PreviewSceneBase extends Phaser.Scene {
             duration: 360,
             ease: "quad.in",
             onComplete: () => {
+              this.sceneIntroActive = false;
               this.transitionShade.setVisible(false);
               this.transitionAccent.setVisible(false);
               this.transitionTitle.setVisible(false);
@@ -1089,6 +2031,24 @@ export class PreviewSceneBase extends Phaser.Scene {
         });
       },
     });
+    this.tweens.add({
+      targets: this.transitionAccent,
+      scaleX: 1,
+      duration: 320,
+      ease: "quad.out",
+    });
+    this.tweens.add({
+      targets: this.transitionTitle,
+      y: this.scale.height * 0.5 - 68,
+      duration: 320,
+      ease: "quad.out",
+    });
+    this.tweens.add({
+      targets: this.transitionText,
+      y: this.scale.height * 0.5 + 12,
+      duration: 320,
+      ease: "quad.out",
+    });
   }
 
   transitionToScene(sceneKey, data, title, text, hold = 180) {
@@ -1097,6 +2057,7 @@ export class PreviewSceneBase extends Phaser.Scene {
       return;
     }
 
+    this.dismissSceneIntro();
     this.sceneTransitionActive = true;
     this.transitionShade.setVisible(true).setAlpha(0);
     this.transitionAccent.setVisible(true).setAlpha(0);

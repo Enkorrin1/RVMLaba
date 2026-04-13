@@ -34,14 +34,14 @@ export const ITEM_DEFINITIONS = {
   },
   logbook: {
     label: "Журнал",
-    description: "Журнал смотрителя с последней записью о шагах у цистерны и закрытом тоннеле.",
+    description: "Старый журнал маяка с последней записью о шагах у цистерны и закрытом тоннеле.",
     readable: true,
     documentTitle: "Журнал дежурств",
     documentText: "Последняя запись: «Шаги снова у цистерны. Если не вернусь, дверь в восточный тоннель должна остаться закрытой».",
   },
   serviceKey: {
     label: "Служебный ключ",
-    description: "Потемневший ключ с жетоном смотрителя. Он открывает старые проходы под маяком.",
+    description: "Потемневший ключ с жетоном маяка. Он открывает старые проходы под маяком.",
   },
   boatHook: {
     label: "Багор",
@@ -70,6 +70,8 @@ export const interactables = [
     width: 164,
     height: 46,
     prompt: "Кровать",
+    markerAnchor: { x: 878, y: 520 },
+    interactionPriority: 0,
   },
   {
     id: "clutter",
@@ -77,15 +79,19 @@ export const interactables = [
     y: 514,
     width: 196,
     height: 96,
-    prompt: "Стол смотрителя",
+    prompt: "Стол у стены",
+    markerAnchor: { x: 1212, y: 486 },
+    interactionPriority: 1,
   },
   {
     id: "footprints-room",
-    x: 996,
+    x: 1738,
     y: 578,
-    width: 296,
+    width: 180,
     height: 20,
     prompt: "Следы",
+    markerAnchor: { x: 1828, y: 548 },
+    interactionPriority: 2,
   },
   {
     id: "leaf-pile",
@@ -94,6 +100,8 @@ export const interactables = [
     width: 100,
     height: 34,
     prompt: "Листья у стены",
+    markerAnchor: { x: 1484, y: 536 },
+    interactionPriority: 6,
   },
   {
     id: "tower-ladder",
@@ -102,6 +110,8 @@ export const interactables = [
     width: 56,
     height: 292,
     prompt: "Лестница наверх",
+    markerAnchor: { x: 1598, y: 430 },
+    interactionPriority: 12,
   },
   {
     id: "room-door",
@@ -116,6 +126,8 @@ export const interactables = [
       height: 196,
     },
     prompt: "Выход наружу",
+    markerAnchor: { x: wakeRoomVisual.innerX + wakeRoomVisual.innerWidth - 22, y: 414 },
+    interactionPriority: 3,
   },
 ];
 
@@ -141,20 +153,20 @@ export function getWakeObjective(session) {
   }
 
   if (!session.wakeProgress.cluesChecked) {
-    return "Цель: осмотреть комнату и понять, как ты оказался внутри маяка.";
+    return "Цель: осмотреть комнату и вспомнить, как шторм занёс тебя в маяк.";
   }
 
   if (!session.lanternProgress.mechanismChecked) {
     return "Цель: следы ведут и к выходу, и к лестнице наверх. Можно подняться к прожектору или выйти наружу.";
   }
 
-  return "Цель: можно снова осмотреть комнату смотрителя, подняться к прожектору или выйти к башне.";
+  return "Цель: можно снова осмотреть жилую комнату, подняться к прожектору или выйти к башне.";
 }
 
 export function getWakeInteractionText(session, targetId) {
   switch (targetId) {
     case "bed":
-      return "Одеяло сырое и солёное. Похоже, тебя уложили сюда уже после шторма, пока ты был без сознания.";
+      return "Одеяло сырое и солёное. Похоже, тебя втащили сюда прямо после шторма, когда ты был без сознания.";
     case "footprints-room":
       return "Грязные следы тянутся от кровати через комнату к лестнице и дальше к выходу. Значит, кто-то был здесь совсем недавно и ушёл в спешке.";
     case "leaf-pile":
@@ -166,7 +178,7 @@ export function getWakeInteractionText(session, targetId) {
     case "room-door":
       return session.wakeProgress.cluesChecked
         ? "Следы изучены. Теперь можно выйти наружу и осмотреть площадку у основания башни."
-        : "Рука уже на двери, но уходить вслепую рано. Сначала стоит понять, кто оставил тебя в комнате смотрителя.";
+        : "Рука уже на двери, но уходить вслепую рано. Сначала стоит понять, кто вытащил тебя из моря и оставил здесь.";
     case "clutter":
       return session.drawerItems.length > 0
         ? "В ящике стола лежат батарея и записка. Их лучше забрать с собой."

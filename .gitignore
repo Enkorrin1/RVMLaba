@@ -1,0 +1,8 @@
+node_modules/
+output/
+src/output/
+
+# Local QA/browser artifacts
+playwright-report/
+test-results/
+*.log
