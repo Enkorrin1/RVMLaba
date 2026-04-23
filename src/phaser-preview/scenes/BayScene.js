@@ -68,7 +68,22 @@ export class BayScene extends PreviewSceneBase {
   }
 
   placePlayer() {
-    this.playerBody.setPosition(760, 526);
+    const x = this.entry === "from-north-bay" ? 1520 : 760;
+    this.playerBody.setPosition(x, 526);
+  }
+
+  goToNorthBay() {
+    if (this.sceneTransitionActive) {
+      return;
+    }
+    this.session.stage = "north-bay";
+    this.session.progressStage = "north-bay";
+    this.transitionToScene(
+      "north-bay-preview",
+      { entry: "from-bay" },
+      "Северная бухта",
+      "Следы уводят выше по скале, к расщелине, где плещется прибой."
+    );
   }
 
   handleInteraction(target) {
@@ -101,6 +116,10 @@ export class BayScene extends PreviewSceneBase {
       case "footprints":
         if (!hasResolvedBayScene(this.session)) {
           this.showNarration("Следы тянутся выше по скале, но картина пока неполная. Осмотри лагерь в бухте.");
+          break;
+        }
+        if (this.session.bayProgress.footprintsAnalyzed) {
+          this.goToNorthBay();
           break;
         }
         this.focusOnInteractable(target, () => this.openFootprintAnalysisOverlay(), {
@@ -142,6 +161,7 @@ export class BayScene extends PreviewSceneBase {
       status.setText(`Найдено улик: ${found} / 3`);
       this.showMessage(message);
       if (found === 3) {
+        this.session.bayProgress.footprintsAnalyzed = true;
         const finalText = this.add.text(0, 188, "Теперь ясно: кто-то был здесь совсем недавно и ушёл к северной бухте.", {
           fontFamily: "Georgia, serif",
           fontSize: "22px",
@@ -156,7 +176,13 @@ export class BayScene extends PreviewSceneBase {
           scale: 2.8,
           duration: 760,
         });
-        this.showNarration("След почти прямой: смотритель ушёл к северной бухте совсем недавно.");
+        this.showNarration("След почти прямой: идём к северной бухте.");
+        this.time.delayedCall(1800, () => {
+          if (this.overlayActive) {
+            this.closeOverlay();
+          }
+        });
+        this.time.delayedCall(2200, () => this.goToNorthBay());
       }
     };
 

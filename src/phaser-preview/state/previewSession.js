@@ -28,6 +28,13 @@ export function createDefaultPreviewSession() {
     bayProgress: {
       campSeen: false,
       cacheOpened: false,
+      footprintsAnalyzed: false,
+    },
+    northBayProgress: {
+      lanternChecked: false,
+      keeperApproached: false,
+      accusationMade: false,
+      gearFound: false,
     },
     beats: {
       generatorRestored: false,

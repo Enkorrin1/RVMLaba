@@ -5,6 +5,7 @@ import { ServiceScene } from "./scenes/ServiceScene.js";
 import { TunnelScene } from "./scenes/TunnelScene.js";
 import { PierScene } from "./scenes/PierScene.js";
 import { BayScene } from "./scenes/BayScene.js";
+import { NorthBayScene } from "./scenes/NorthBayScene.js";
 import { installPreviewDiagnostics } from "./dev/previewDiagnostics.js";
 import { resetPreviewSession } from "./state/previewSession.js";
 
@@ -57,7 +58,7 @@ function createPreviewGame() {
         debug: false,
       },
     },
-    scene: [WakeScene, LanternScene, ShoreScene, ServiceScene, TunnelScene, PierScene, BayScene],
+    scene: [WakeScene, LanternScene, ShoreScene, ServiceScene, TunnelScene, PierScene, BayScene, NorthBayScene],
   });
 }
 

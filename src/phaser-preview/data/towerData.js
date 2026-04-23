@@ -7,6 +7,7 @@ export const SERVICE_WORLD_WIDTH = 2400;
 export const TUNNEL_WORLD_WIDTH = 2400;
 export const PIER_WORLD_WIDTH = 2400;
 export const BAY_WORLD_WIDTH = 2200;
+export const NORTH_BAY_WORLD_WIDTH = 2200;
 export const PREVIEW_WORLD_HEIGHT = 720;
 export const PREVIEW_GROUND_Y = 600;
 
@@ -264,5 +265,50 @@ export const bayInteractables = [
     height: 22,
     prompt: "Следы на камнях",
     markerAnchor: { x: 1603, y: 530 },
+  },
+];
+
+export const northBayInteractables = [
+  {
+    id: "north-bay-return",
+    x: 694,
+    y: 438,
+    width: 56,
+    height: 164,
+    prompt: "Тропа обратно в бухту",
+    markerAnchor: { x: 722, y: 422 },
+  },
+  {
+    id: "broken-lantern",
+    x: 1044,
+    y: 548,
+    width: 48,
+    height: 60,
+    prompt: "Погасший фонарь",
+    markerAnchor: { x: 1068, y: 524 },
+    interactionPriority: 2,
+  },
+  {
+    id: "keeper",
+    x: 1420,
+    y: 508,
+    width: 84,
+    height: 98,
+    prompt: "Смотритель",
+    markerAnchor: { x: 1462, y: 488 },
+    interactionPriority: 1,
+  },
+  {
+    id: "brass-gear",
+    x: 1556,
+    y: 566,
+    width: 52,
+    height: 24,
+    prompt: "Обломок шестерёнки",
+    markerAnchor: { x: 1582, y: 544 },
+    interactionPriority: 3,
+    visible(session) {
+      return Boolean(session.northBayProgress?.accusationMade);
+    },
   },
 ];
