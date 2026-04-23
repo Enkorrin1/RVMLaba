@@ -2,13 +2,14 @@ import { interactables as wakeInteractables, ITEM_DEFINITIONS } from "../data/wa
 import {
   bayInteractables,
   lanternInteractables,
+  northBayInteractables,
   pierInteractables,
   serviceInteractables,
   shoreInteractables,
   tunnelInteractables,
 } from "../data/towerData.js";
 
-const VALID_STAGES = new Set(["wake", "lantern", "shore", "service", "tunnel", "pier", "bay"]);
+const VALID_STAGES = new Set(["wake", "lantern", "shore", "service", "tunnel", "pier", "bay", "north-bay"]);
 
 const INTERACTABLE_COLLECTIONS = [
   ["wake", wakeInteractables],
@@ -18,6 +19,7 @@ const INTERACTABLE_COLLECTIONS = [
   ["tunnel", tunnelInteractables],
   ["pier", pierInteractables],
   ["bay", bayInteractables],
+  ["north-bay", northBayInteractables],
 ];
 
 function validateInteractableCollections() {

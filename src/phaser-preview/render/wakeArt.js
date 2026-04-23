@@ -194,6 +194,17 @@ export function createItemIcon(scene, itemId, x, y, kind = "inventory") {
       scene.add.arc(kind === "inventory" ? 12 : 22, kind === "inventory" ? -10 : -18, kind === "inventory" ? 9 : 15, 210, 20, false, 0xa1bac6, 1)
         .setStrokeStyle(kind === "inventory" ? 3 : 4, 0xa1bac6, 1),
     ]);
+  } else if (itemId === "brassGear") {
+    const outer = kind === "inventory" ? 10 : 16;
+    const inner = kind === "inventory" ? 4 : 6;
+    icon.add([
+      scene.add.circle(0, 0, outer, 0xb8963f, 1).setStrokeStyle(2, 0x5b4418, 1),
+      scene.add.circle(0, 0, inner, 0x3a2d14, 1),
+      scene.add.rectangle(outer, 0, kind === "inventory" ? 4 : 6, kind === "inventory" ? 4 : 6, 0xb8963f, 1),
+      scene.add.rectangle(-outer, 0, kind === "inventory" ? 4 : 6, kind === "inventory" ? 4 : 6, 0xb8963f, 1),
+      scene.add.rectangle(0, outer, kind === "inventory" ? 4 : 6, kind === "inventory" ? 4 : 6, 0xb8963f, 1),
+      scene.add.rectangle(0, -outer, kind === "inventory" ? 4 : 6, kind === "inventory" ? 4 : 6, 0xb8963f, 1),
+    ]);
   }
 
   return icon;

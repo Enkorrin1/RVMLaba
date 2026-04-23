@@ -1,5 +1,6 @@
 import {
   BAY_WORLD_WIDTH,
+  NORTH_BAY_WORLD_WIDTH,
   PIER_WORLD_WIDTH,
   PREVIEW_GROUND_Y,
   PREVIEW_WORLD_HEIGHT,
@@ -523,5 +524,130 @@ function createBayProps(scene) {
 
   for (let index = 0; index < 4; index += 1) {
     scene.add.ellipse(1572 + index * 18, 566 + (index % 2) * 8, 16, 8, 0x1a1f22, 0.46).setAngle(-18).setDepth(8);
+  }
+}
+
+export function buildNorthBayEnvironment(scene) {
+  scene.northBayWaterBands = [];
+  scene.northBayMist = [];
+  scene.northBayDrips = [];
+
+  scene.add.rectangle(NORTH_BAY_WORLD_WIDTH * 0.5, PREVIEW_WORLD_HEIGHT * 0.5, NORTH_BAY_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT, 0x050f16);
+  scene.add.rectangle(NORTH_BAY_WORLD_WIDTH * 0.5, 128, NORTH_BAY_WORLD_WIDTH, 260, 0x0c1e2a, 0.95);
+  scene.add.rectangle(NORTH_BAY_WORLD_WIDTH * 0.5, 218, NORTH_BAY_WORLD_WIDTH, 192, 0x163546, 0.36);
+
+  scene.add.polygon(420, 452, [0, 198, 140, 36, 340, 186, 620, 54, 880, 210, 880, 320, 0, 320], 0x0f2532, 0.96);
+  scene.add.polygon(1760, 460, [0, 204, 170, 58, 360, 180, 620, 60, 860, 220, 860, 320, 0, 320], 0x0d2130, 0.98);
+  scene.add.polygon(1140, 420, [0, 216, 180, 80, 420, 200, 720, 80, 920, 220, 920, 320, 0, 320], 0x0a1c28, 0.88);
+
+  scene.add.rectangle(NORTH_BAY_WORLD_WIDTH * 0.5, 654, NORTH_BAY_WORLD_WIDTH, 132, 0x040f17, 1);
+  scene.add.rectangle(NORTH_BAY_WORLD_WIDTH * 0.5, 628, NORTH_BAY_WORLD_WIDTH, 40, 0x123c52, 0.28);
+
+  for (let index = 0; index < 5; index += 1) {
+    const band = scene.add.rectangle(160 + index * 420, 642 + (index % 2) * 10, 300, 4, 0xbfd7dc, 0.08);
+    band.speed = 8 + index * 1.4;
+    band.baseWidth = band.width;
+    scene.northBayWaterBands.push(band);
+  }
+
+  for (let index = 0; index < 5; index += 1) {
+    const haze = scene.add.ellipse(
+      420 + index * 340,
+      560 + (index % 2) * 12,
+      180 + index * 14,
+      26,
+      0xaac2c8,
+      0.03
+    ).setDepth(6);
+    haze.phase = index * 0.6;
+    scene.northBayMist.push(haze);
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    const drip = scene.add.rectangle(960 + index * 110, 220 + (index % 2) * 30, 2, 40, 0xbfd7dc, 0.18).setDepth(6);
+    drip.baseY = drip.y;
+    drip.phase = index * 0.9;
+    scene.northBayDrips.push(drip);
+  }
+
+  createNorthBayProps(scene);
+}
+
+export function createNorthBayGround(scene) {
+  scene.physics.world.setBounds(0, 0, NORTH_BAY_WORLD_WIDTH, PREVIEW_WORLD_HEIGHT);
+  scene.platforms = scene.physics.add.staticGroup();
+  const ground = scene.add.rectangle(1100, PREVIEW_GROUND_Y + 60, 1900, 120, 0x324147, 0);
+  scene.physics.add.existing(ground, true);
+  scene.platforms.add(ground);
+}
+
+export function updateNorthBayAmbient(scene, time) {
+  for (const band of scene.northBayWaterBands ?? []) {
+    band.x += band.speed * 0.014;
+    band.alpha = 0.05 + Math.sin(time * 0.0012 + band.speed) * 0.04;
+    band.width = band.baseWidth + Math.sin(time * 0.0017 + band.speed) * 22;
+    if (band.x > NORTH_BAY_WORLD_WIDTH + 200) {
+      band.x = -200;
+    }
+  }
+
+  (scene.northBayMist ?? []).forEach((haze, index) => {
+    haze.alpha = 0.02 + Math.sin(time * 0.0016 + haze.phase) * 0.02 + 0.02;
+    haze.x += Math.sin(time * 0.0011 + index) * 0.09;
+  });
+
+  (scene.northBayDrips ?? []).forEach((drip) => {
+    const cycle = (time * 0.0012 + drip.phase) % 1.6;
+    drip.y = drip.baseY + cycle * 120;
+    drip.alpha = cycle < 1.2 ? 0.18 : 0;
+  });
+
+  if (scene.northBayGearGlow?.visible) {
+    scene.northBayGearGlow.alpha = 0.12 + Math.sin(time * 0.004) * 0.1;
+    scene.northBayGearGlow.scaleX = 1 + Math.sin(time * 0.003) * 0.08;
+    scene.northBayGearGlow.scaleY = 1 + Math.sin(time * 0.003) * 0.08;
+  }
+}
+
+function createNorthBayProps(scene) {
+  scene.add.container(720, 520).setDepth(8).add([
+    scene.add.ellipse(0, 70, 88, 16, 0x000000, 0.22),
+    scene.add.rectangle(0, 0, 56, 164, 0x2c2a26, 1).setStrokeStyle(3, 0xaf8e56, 0.24),
+  ]);
+
+  scene.add.container(1068, 560).setDepth(8).add([
+    scene.add.ellipse(0, 22, 86, 16, 0x000000, 0.22),
+    scene.add.rectangle(0, 6, 14, 28, 0x3a2e22, 1),
+    scene.add.rectangle(0, -16, 36, 36, 0x1a242c, 1).setStrokeStyle(3, 0x6a7f8a, 0.28),
+    scene.add.rectangle(0, -22, 22, 6, 0x4a5a64, 1),
+    scene.add.circle(0, -16, 6, 0x2a1e14, 1),
+  ]);
+
+  const keeper = scene.add.container(1462, 528).setDepth(8);
+  keeper.add([
+    scene.add.ellipse(0, 58, 106, 18, 0x000000, 0.26),
+    scene.add.rectangle(-6, 30, 38, 60, 0x32475a, 1).setStrokeStyle(2, 0x5f7b8c, 0.26),
+    scene.add.rectangle(18, 20, 36, 44, 0x2b3d4e, 1).setAngle(18),
+    scene.add.rectangle(-22, 10, 34, 40, 0x2b3d4e, 1).setAngle(-14),
+    scene.add.circle(4, -10, 18, 0xd6b48e, 1),
+    scene.add.rectangle(6, -18, 30, 8, 0xdbd2c0, 1).setStrokeStyle(1, 0x91795a, 0.4),
+    scene.add.rectangle(10, -24, 6, 14, 0xb05a4b, 1),
+  ]);
+
+  scene.northBayGearProp = scene.add.container(1582, 582).setDepth(8).setVisible(false);
+  scene.northBayGearProp.add([
+    scene.add.ellipse(0, 14, 36, 10, 0x000000, 0.24),
+    scene.add.circle(0, 0, 10, 0xb8963f, 1).setStrokeStyle(2, 0x5b4418, 0.6),
+    scene.add.circle(0, 0, 5, 0x3a2d14, 1),
+    scene.add.rectangle(4, -6, 4, 12, 0xb8963f, 1).setAngle(22),
+  ]);
+
+  scene.northBayGearGlow = scene.add.circle(1582, 578, 22, 0xe1bb73, 0).setDepth(7);
+
+  scene.add.ellipse(1660, 586, 220, 18, 0x0b1820, 0.6).setDepth(7);
+  for (let index = 0; index < 5; index += 1) {
+    scene.add.ellipse(1520 + index * 28, 592 + (index % 2) * 6, 20, 8, 0x17242c, 0.52)
+      .setAngle(index % 2 === 0 ? -18 : 10)
+      .setDepth(8);
   }
 }

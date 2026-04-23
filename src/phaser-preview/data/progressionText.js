@@ -153,3 +153,35 @@ export function getBayObjective(session) {
 export function hasResolvedBayScene(session) {
   return session.bayProgress.campSeen && session.bayProgress.cacheOpened;
 }
+
+export function getNorthBayObjective(session) {
+  const progress = session.northBayProgress ?? {};
+
+  if (!progress.lanternChecked) {
+    return "Цель: осмотреть погасший фонарь у расщелины.";
+  }
+
+  if (!progress.keeperApproached) {
+    return "Цель: подойти к смотрителю у скалы.";
+  }
+
+  if (!progress.accusationMade) {
+    return "Цель: сказать смотрителю, что его вывели из строя специально.";
+  }
+
+  if (!progress.gearFound) {
+    return "Цель: осмотреть обломок латунной шестерёнки рядом со смотрителем.";
+  }
+
+  return "Цель: вернуться к маяку и найти, где подменили механизм.";
+}
+
+export function hasResolvedNorthBayScene(session) {
+  const progress = session.northBayProgress ?? {};
+  return Boolean(
+    progress.lanternChecked
+      && progress.keeperApproached
+      && progress.accusationMade
+      && progress.gearFound
+  );
+}
