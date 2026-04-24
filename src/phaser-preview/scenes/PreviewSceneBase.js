@@ -292,7 +292,7 @@ export class PreviewSceneBase extends Phaser.Scene {
       onComplete: () => {
         onPeak?.();
         this.time.delayedCall(hold, () => {
-          camera.pan(this.playerBody.x, this.playerBody.y, returnDuration, "Quad.easeInOut", true, undefined, () => {
+          camera.pan(this.playerBody.x, this.playerBody.y, returnDuration, "Quad.easeInOut", true, () => {
             camera.startFollow(this.playerBody, true, this.defaultCameraLerp?.x ?? 0.12, this.defaultCameraLerp?.y ?? 0.12);
             this.cameraBeatActive = false;
             onComplete?.();

@@ -296,6 +296,26 @@ function createUndergroundProps(scene) {
     scene.add.rectangle(-28, -40, 18, 54, 0x4a4138, 1).setStrokeStyle(2, 0xd2b47b, 0.18),
   ]);
 
+  const valvePanel = scene.add.container(1221, 533).setDepth(8);
+  valvePanel.add([
+    scene.add.ellipse(0, 50, 114, 18, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 90, 90, 0x2d3d46, 1).setStrokeStyle(3, 0x87d3df, 0.3),
+    scene.add.rectangle(0, 4, 68, 60, 0x111b22, 1),
+    scene.add.circle(-22, -2, 11, 0x3a4f5e, 1).setStrokeStyle(3, 0x87d3df, 0.65),
+    scene.add.circle(0, -2, 11, 0x3a4f5e, 1).setStrokeStyle(3, 0x87d3df, 0.35),
+    scene.add.circle(22, -2, 11, 0x3a4f5e, 1).setStrokeStyle(3, 0x87d3df, 0.35),
+    scene.add.rectangle(-22, -10, 2, 18, 0x87d3df, 0.7),
+    scene.add.rectangle(-30, -2, 18, 2, 0x87d3df, 0.7),
+    scene.add.rectangle(0, -10, 2, 18, 0x87d3df, 0.28),
+    scene.add.rectangle(-8, -2, 18, 2, 0x87d3df, 0.28),
+    scene.add.rectangle(22, -10, 2, 18, 0x87d3df, 0.28),
+    scene.add.rectangle(14, -2, 18, 2, 0x87d3df, 0.28),
+    scene.add.rectangle(0, 28, 68, 18, 0x0c1318, 1),
+    scene.add.text(-22, 28, 'А', { fontFamily: 'monospace', fontSize: '11px', color: '#87d3df' }).setOrigin(0.5),
+    scene.add.text(0, 28, 'Б', { fontFamily: 'monospace', fontSize: '11px', color: '#87d3df' }).setOrigin(0.5),
+    scene.add.text(22, 28, 'В', { fontFamily: 'monospace', fontSize: '11px', color: '#87d3df' }).setOrigin(0.5),
+  ]);
+
   // Tunnel props (offset 1800)
   const tunnelOffset = 1800;
   scene.add.container(tunnelOffset + 980, 550).setDepth(8).add([
@@ -323,6 +343,22 @@ function createUndergroundProps(scene) {
     scene.add.rectangle(0, 0, 66, 168, 0x3a312a, 1).setStrokeStyle(3, 0xd2b47b, 0.2),
     scene.add.circle(12, 8, 5, 0xe0c27d, 1),
     scene.add.rectangle(-30, -38, 18, 56, 0x4b4036, 1).setStrokeStyle(2, 0xd2b47b, 0.16),
+  ]);
+
+  const cipherLock = scene.add.container(tunnelOffset + 1275, 524).setDepth(8);
+  cipherLock.add([
+    scene.add.ellipse(0, 56, 92, 16, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 78, 106, 0x2a3540, 1).setStrokeStyle(3, 0xe0c27d, 0.26),
+    scene.add.rectangle(0, -14, 58, 58, 0x0e1620, 1),
+    scene.add.circle(-17, -14, 12, 0x3a4550, 1).setStrokeStyle(2, 0xe0c27d, 0.5),
+    scene.add.circle(0, -14, 12, 0x3a4550, 1).setStrokeStyle(2, 0xe0c27d, 0.5),
+    scene.add.circle(17, -14, 12, 0x3a4550, 1).setStrokeStyle(2, 0xe0c27d, 0.5),
+    scene.add.rectangle(-17, -24, 2, 7, 0xe0c27d, 0.6),
+    scene.add.rectangle(0, -24, 2, 7, 0xe0c27d, 0.6),
+    scene.add.rectangle(17, -24, 2, 7, 0xe0c27d, 0.6),
+    scene.add.rectangle(0, 30, 58, 16, 0x080f14, 1),
+    scene.add.text(0, 30, 'III · VII · I', { fontFamily: 'monospace', fontSize: '8px', color: '#e0c27d' }).setOrigin(0.5).setAlpha(0.55),
+    scene.add.circle(0, 42, 5, 0x050b10, 1).setStrokeStyle(2, 0xe0c27d, 0.4),
   ]);
 
   // Pier props (offset 3600)
@@ -366,6 +402,22 @@ function createUndergroundProps(scene) {
   for (let index = 0; index < 4; index += 1) {
     scene.add.ellipse(bayOffset + 1572 + index * 18, 566 + (index % 2) * 8, 16, 8, 0x1a1f22, 0.46).setAngle(-18).setDepth(8);
   }
+
+  const nauticalChart = scene.add.container(bayOffset + 1404, 516).setDepth(8);
+  nauticalChart.add([
+    scene.add.ellipse(0, 46, 118, 18, 0x000000, 0.18),
+    scene.add.rectangle(0, 0, 102, 96, 0x5a4230, 1).setStrokeStyle(3, 0xd2b47b, 0.3),
+    scene.add.rectangle(0, -2, 84, 76, 0xd4c59c, 0.12),
+    scene.add.rectangle(-18, -18, 34, 3, 0xb89a68, 0.38).setAngle(14),
+    scene.add.rectangle(10, -9, 22, 3, 0xb89a68, 0.3).setAngle(-9),
+    scene.add.rectangle(-8, 6, 28, 3, 0xb89a68, 0.32).setAngle(18),
+    scene.add.rectangle(16, 18, 18, 3, 0xb89a68, 0.28).setAngle(-11),
+    scene.add.circle(30, -22, 5, 0x000000, 0).setStrokeStyle(2, 0xd2b47b, 0.58),
+    scene.add.rectangle(30, -26, 2, 8, 0xd2b47b, 0.58),
+    scene.add.rectangle(26, -22, 8, 2, 0xd2b47b, 0.58),
+    scene.add.rectangle(0, 36, 84, 12, 0x3a2a1a, 0.55),
+    scene.add.text(0, 36, 'КАРТА', { fontFamily: 'Georgia, serif', fontSize: '8px', color: '#d2b47b' }).setOrigin(0.5).setAlpha(0.65),
+  ]);
 }
 
 function createRegionSignage(scene) {

@@ -71,6 +71,10 @@ export function getServiceObjective(session) {
     return "Цель: осмотреть журнал дежурств на нижнем уровне.";
   }
 
+  if (!session.serviceProgress.valveSolved) {
+    return "Цель: разобраться с клапанным узлом рядом — вентили стоят в нерабочем положении.";
+  }
+
   if (!session.serviceProgress.consoleUsed) {
     return session.puzzleState.serviceConsole.batteryInstalled
       ? "Цель: проверить сервисный пульт и схему маяка."
@@ -94,13 +98,18 @@ export function getServiceObjective(session) {
 
 export function hasResolvedServiceScene(session) {
   return session.serviceProgress.logbookRead
+    && session.serviceProgress.valveSolved
     && session.serviceProgress.consoleUsed
     && session.serviceProgress.doorChecked;
 }
 
 export function getTunnelObjective(session) {
   if (!session.tunnelProgress.lockerOpened) {
-    return "Цель: осмотреть шкафчик в тоннеле.";
+    return "Цель: осмотреть шкафчик персонала в тоннеле.";
+  }
+
+  if (!session.tunnelProgress.cipherSolved) {
+    return "Цель: вскрыть кодовый замок — подсказка выбита прямо на стене рядом.";
   }
 
   if (!session.tunnelProgress.signalFound) {
@@ -117,7 +126,9 @@ export function getTunnelObjective(session) {
 }
 
 export function hasResolvedTunnelScene(session) {
-  return session.tunnelProgress.lockerOpened && session.tunnelProgress.signalFound;
+  return session.tunnelProgress.lockerOpened
+    && session.tunnelProgress.cipherSolved
+    && session.tunnelProgress.signalFound;
 }
 
 export function getPierObjective(session) {
@@ -151,11 +162,17 @@ export function getBayObjective(session) {
     return "Цель: проверить тайник под тентом в скрытой бухте.";
   }
 
-  return "Цель: проверить следы на камнях у выхода из бухты.";
+  if (!session.bayProgress.chartSolved) {
+    return "Цель: изучить навигационную карту — отметить три точки, которые уже встречались в подземелье.";
+  }
+
+  return "Цель: осмотреть следы на камнях у выхода из бухты.";
 }
 
 export function hasResolvedBayScene(session) {
-  return session.bayProgress.campSeen && session.bayProgress.cacheOpened;
+  return session.bayProgress.campSeen
+    && session.bayProgress.cacheOpened
+    && session.bayProgress.chartSolved;
 }
 
 export function getUndergroundObjective(session) {

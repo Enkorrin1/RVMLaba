@@ -847,19 +847,59 @@ export class ShoreScene extends PreviewSceneBase {
   }
 
   getKeeperDialogueScript() {
-    const state = this.session.keeperDialogue ?? { met: false, introSeen: false, thanksSeen: false };
+    const state = this.session.keeperDialogue ?? { met: false, introSeen: false, thanksSeen: false, undergroundSent: false };
+    const beats = this.session.beats;
 
-    if (this.session.beats.generatorRestored && !state.thanksSeen) {
+    // Highest priority: player found sabotage evidence and hasn't reported yet
+    if (beats.sabotageFound && !beats.sabotageReported) {
+      return {
+        kind: "sabotage-reveal",
+        pages: [
+          "— Ты что-то нашёл. Я вижу по лицу.",
+          "— Там, внизу, в последней комнате у бухты... Кто-то жил там несколько ночей. Тайник. Лебёдка с перерезанной верёвкой. И следы — свежие.",
+          "— Это не авария. Кто-то сделал это намеренно. Залез снизу, через приливные ворота, выбил засов изнутри и обесточил цепь питания.",
+          "— Он знал, когда придёт корабль. Знал, что я один. Знал, где что отключить, чтобы маяк ослеп именно этой ночью.",
+          "— Ступай пока наружу. Я должен подумать. Но далеко не уходи.",
+        ],
+      };
+    }
+
+    // After lighthouse failed: send player underground
+    if (beats.lighthouseTried && !state.undergroundSent) {
+      return {
+        kind: "underground-prompt",
+        pages: [
+          "— Что? Стартер щёлкнул вхолостую? Значит, линза в порядке — питание не доходит.",
+          "— Проблема не наверху. Она где-то в подземном механизме. Я сам туда сейчас не могу.",
+          "— Спустись в люк и пройди насквозь. Начни с сервисного уровня — иди дальше, пока не найдёшь, что оборвалось.",
+        ],
+      };
+    }
+
+    // Generator thanks (existing)
+    if (beats.generatorRestored && !state.thanksSeen) {
       return {
         kind: "thanks",
         pages: [
           "— Свет снова идёт. Честно, уже не верил, что успеем до рассвета.",
           "— Завтра корабль с материка пройдёт мимо скал — теперь не в камни, а в фарватер.",
-          "— Отдохни, если надо. Я пока посижу у башни. Всё остальное, что на этом острове творится, объясню позже.",
+          "— Только одно: зайди в башню и проверь, добралось ли питание до прожектора. Стартер на фонарном ярусе.",
         ],
       };
     }
 
+    // After thanks, before lighthouse tried: prompt to go test the lamp
+    if (beats.generatorRestored && state.thanksSeen && !beats.lighthouseTried) {
+      return {
+        kind: "lighthouse-prompt",
+        pages: [
+          "— Всё ещё здесь? Ты ещё не проверил прожектор наверху.",
+          "— Иди на фонарный ярус и потяни стартер. Если лампа зажглась — мы справились. Если нет — значит беда глубже.",
+        ],
+      };
+    }
+
+    // First encounter intro
     if (!state.introSeen) {
       return {
         kind: "intro",
@@ -989,7 +1029,30 @@ export class ShoreScene extends PreviewSceneBase {
     if (kind === "thanks") {
       state.thanksSeen = true;
       this.closeOverlay();
-      this.showNarration("Смотритель коротко благодарит и уходит в тень у стены. Маяк снова на его совести.");
+      this.showNarration("Смотритель кивает на башню. Генератор ожил — теперь нужно убедиться, что питание дошло до прожектора.");
+      return;
+    }
+
+    if (kind === "lighthouse-prompt") {
+      this.closeOverlay();
+      this.showNarration("Смотритель смотрит на башню. Что-то в его голосе звучит настороженно — будто он сам не уверен, что свет должен заработать.");
+      return;
+    }
+
+    if (kind === "underground-prompt") {
+      state.undergroundSent = true;
+      this.closeOverlay();
+      this.cameras.main.shake(120, 0.0015);
+      this.showNarration("Смотритель не ошибается: что-то идёт не так под башней. Люк у основания ждёт. Пора спускаться.");
+      return;
+    }
+
+    if (kind === "sabotage-reveal") {
+      this.session.beats.sabotageReported = true;
+      this.closeOverlay();
+      this.cameras.main.shake(260, 0.003);
+      this.cameras.main.flash(300, 0, 0, 0, true);
+      this.showNarration("Смотритель долго смотрит на море. Его руки сжимаются. Он знает больше, чем говорит — и теперь это очевидно.");
       return;
     }
 

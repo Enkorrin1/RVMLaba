@@ -14,11 +14,13 @@ export function createDefaultPreviewSession() {
       logbookRead: false,
       consoleUsed: false,
       doorChecked: false,
+      valveSolved: false,
     },
     tunnelProgress: {
       lockerOpened: false,
       signalFound: false,
       exitChecked: false,
+      cipherSolved: false,
     },
     pierProgress: {
       skiffChecked: false,
@@ -28,15 +30,20 @@ export function createDefaultPreviewSession() {
     bayProgress: {
       campSeen: false,
       cacheOpened: false,
+      chartSolved: false,
     },
     undergroundRegion: "service",
     beats: {
       generatorRestored: false,
+      lighthouseTried: false,
+      sabotageFound: false,
+      sabotageReported: false,
     },
     keeperDialogue: {
       met: false,
       introSeen: false,
       thanksSeen: false,
+      undergroundSent: false,
     },
     puzzleState: {
       toolbox: {

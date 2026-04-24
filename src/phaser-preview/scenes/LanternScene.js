@@ -146,6 +146,7 @@ export class LanternScene extends PreviewSceneBase {
         }
 
         this.session.lanternProgress.mechanismChecked = true;
+        this.session.beats.lighthouseTried = true;
         this.emitWorldPulse(1352, 448, {
           color: 0xf1d08a,
           radius: 32,
