@@ -1055,13 +1055,15 @@ export class UndergroundScene extends PreviewSceneBase {
     [-80, -40, 0, 40, 80].forEach((x) => {
       boardGfx.beginPath(); boardGfx.moveTo(x, -98); boardGfx.lineTo(x, 120); boardGfx.strokePath();
     });
-    // Wood grain
+    // Wood grain (segmented lines so they don't rely on bezier)
     boardGfx.lineStyle(1, 0x2a1a10, 0.5);
     for (let i = 0; i < 14; i += 1) {
       const y = -90 + i * 16;
       boardGfx.beginPath();
       boardGfx.moveTo(-150, y);
-      boardGfx.bezierCurveTo(-40, y - 2, 60, y + 3, 150, y);
+      boardGfx.lineTo(-40, y - 2);
+      boardGfx.lineTo(60, y + 3);
+      boardGfx.lineTo(150, y);
       boardGfx.strokePath();
     }
     // Iron band across the middle of the door

@@ -711,8 +711,15 @@ export class PreviewSceneBase extends Phaser.Scene {
       }
 
       if (event.key === "Escape") {
+        event.preventDefault();
         resumePreviewAudio();
-        this.closeOverlay();
+        if (this.overlayActive) {
+          this.closeOverlay();
+        } else if (this.pauseMenuActive) {
+          this.closePauseMenu();
+        } else {
+          this.openPauseMenu();
+        }
       }
     };
 
@@ -1473,13 +1480,20 @@ export class PreviewSceneBase extends Phaser.Scene {
   }
 
   handleInventoryKeyPress() {
+    // Close the pause menu if it was open — inventory takes precedence.
+    if (this.pauseMenuActive) {
+      this.closePauseMenu();
+    }
     if (this.overlayActive) {
       if (this.overlayKind === "inventory") {
         this.closeOverlay();
+        return;
       }
+      // Any other overlay: close it first, then open inventory on next tick.
+      this.closeOverlay();
+      this.time.delayedCall(180, () => this.openInventoryOverlay());
       return;
     }
-
     this.openInventoryOverlay();
   }
 
@@ -1844,10 +1858,18 @@ export class PreviewSceneBase extends Phaser.Scene {
   }
 
   openJournalOverlay() {
+    // Pause menu is a plain container, not an overlay — close it explicitly.
+    if (this.pauseMenuActive) {
+      this.closePauseMenu();
+    }
     if (this.overlayActive) {
       if (this.overlayKind === "journal") {
         this.closeOverlay();
+        return;
       }
+      // Any other overlay: close first, then reopen journal after the fade-out.
+      this.closeOverlay();
+      this.time.delayedCall(180, () => this.openJournalOverlay());
       return;
     }
 

@@ -528,39 +528,126 @@ function createShoreProps(scene) {
   scene.hatchHandleVisual = hatchHandle;
   scene.hatchAura = scene.add.ellipse(1178, 590, 132, 24, 0x8fe0a0, 0).setDepth(6).setVisible(false);
 
+  // === Toolbox (military steel box on a stone) ===
   const toolbox = scene.add.container(1334, 560).setDepth(10);
+  // Stone pedestal under the toolbox — sells weight + grounding
+  const tbStoneShadow = scene.add.ellipse(2, 28, 168, 14, 0x000000, 0.42);
+  const tbStone = scene.add.ellipse(0, 24, 156, 14, 0x3a444a, 0.85).setStrokeStyle(1, 0x1a2028, 0.6);
+  // Box body
+  const tbBodyShadow = scene.add.rectangle(2, 3, 138, 50, 0x000000, 0.35);
+  const tbBody = scene.add.rectangle(0, 0, 134, 46, 0x566169, 1).setStrokeStyle(3, 0x23292d, 1);
+  // Lid — slightly thicker at top suggesting it's hinged
+  const tbLid = scene.add.rectangle(0, -14, 138, 16, 0x3f474d, 1).setStrokeStyle(2, 0x1a2028, 1);
+  const tbLidStrip = scene.add.rectangle(0, -14, 138, 3, 0xc8b07a, 0.55);
+  // Corner rivets
+  const tbRivets = scene.add.graphics();
+  tbRivets.fillStyle(0xc8d0d6, 0.75);
+  [[-60, -10], [60, -10], [-60, 18], [60, 18]].forEach(([rx, ry]) => tbRivets.fillCircle(rx, ry, 2.2));
+  // Latches (two small trapezoids on the front)
+  const tbLatchL = scene.add.rectangle(-36, -2, 12, 10, 0xc8b07a, 1).setStrokeStyle(1, 0x4a3820, 0.8);
+  const tbLatchR = scene.add.rectangle(36, -2, 12, 10, 0xc8b07a, 1).setStrokeStyle(1, 0x4a3820, 0.8);
+  // Carry handle on top
+  const tbHandleBase = scene.add.rectangle(0, -24, 44, 4, 0x2a2e33, 1);
+  const tbHandleArc = scene.add.arc(0, -28, 22, 180, 360, false, 0x3a444a, 0).setStrokeStyle(3, 0x7e8a92, 0.9);
+  // Label plate
+  const tbPlate = scene.add.rectangle(0, 4, 52, 10, 0x1a2028, 0.95).setStrokeStyle(1, 0xc8b07a, 0.35);
+  const tbPlateText = scene.add.text(0, 4, "ИНСТР.", {
+    fontFamily: "monospace", fontSize: "6.5px", color: "#c8b07a", letterSpacing: 1.5,
+  }).setOrigin(0.5);
+  // Rust streak
+  const tbRust = scene.add.rectangle(-52, 8, 4, 18, 0x6a4020, 0.55);
   toolbox.add([
-    scene.add.ellipse(0, 24, 154, 18, 0x000000, 0.12),
-    scene.add.rectangle(0, 0, 140, 54, 0x566169, 1).setStrokeStyle(3, 0xc8b07a, 0.18),
-    scene.add.rectangle(0, -10, 104, 20, 0x7e8a92, 1),
-    scene.add.rectangle(0, 8, 52, 8, 0x263239, 1),
-    scene.add.rectangle(-34, 12, 18, 14, 0x69757b, 0.82),
-    scene.add.rectangle(34, 12, 18, 14, 0x69757b, 0.82),
+    tbStoneShadow, tbStone,
+    tbBodyShadow, tbBody, tbLid, tbLidStrip, tbRivets,
+    tbHandleBase, tbHandleArc,
+    tbLatchL, tbLatchR, tbPlate, tbPlateText, tbRust,
   ]);
 
+  // === Radio (portable field transceiver with antenna on a post) ===
   const radio = scene.add.container(1586, 534).setDepth(10);
+  // Wooden crate underneath (not a floating box)
+  const rCrateShadow = scene.add.ellipse(2, 30, 118, 12, 0x000000, 0.4);
+  const rCrate = scene.add.rectangle(0, 22, 108, 18, 0x4a3826, 1).setStrokeStyle(2, 0x221610, 1);
+  const rCrateGrain = scene.add.graphics();
+  rCrateGrain.lineStyle(1, 0x221610, 0.6);
+  [[-48, 16], [-16, 28], [18, 16], [46, 28]].forEach(([x1, y1]) => {
+    rCrateGrain.beginPath(); rCrateGrain.moveTo(x1, y1); rCrateGrain.lineTo(x1 - 4, y1 - 10); rCrateGrain.strokePath();
+  });
+  // Radio body
+  const rBodyShadow = scene.add.rectangle(2, 1, 92, 58, 0x000000, 0.35);
+  const rBody = scene.add.rectangle(0, -2, 88, 56, 0x2a3540, 1).setStrokeStyle(2, 0xe1bb73, 0.55);
+  // Front face — darker inset
+  const rFace = scene.add.rectangle(0, -2, 80, 44, 0x141a20, 1);
+  // Speaker grille (left)
+  const rGrille = scene.add.rectangle(-22, 2, 30, 22, 0x0c1218, 1).setStrokeStyle(1, 0x5a7080, 0.5);
+  const rGrilleDots = scene.add.graphics();
+  rGrilleDots.fillStyle(0x3a4654, 0.85);
+  for (let r = 0; r < 3; r += 1) {
+    for (let c = 0; c < 5; c += 1) {
+      rGrilleDots.fillCircle(-32 + c * 5, -4 + r * 6, 1.2);
+    }
+  }
+  // Tuning knob (right)
+  const rKnob = scene.add.circle(18, -2, 10, 0x3a4654, 1).setStrokeStyle(2, 0xe1bb73, 0.75);
+  const rKnobMark = scene.add.rectangle(18, -8, 2, 6, 0xe1bb73, 1);
+  // Status LED
+  const rLed = scene.add.circle(30, -18, 2, 0xc7dce3, 1);
+  // Brand label
+  const rPlate = scene.add.rectangle(0, -22, 44, 8, 0x1a1a14, 0.95);
+  const rPlateTxt = scene.add.text(0, -22, "Р-842", {
+    fontFamily: "monospace", fontSize: "5.5px", color: "#e3c47b", letterSpacing: 1,
+  }).setOrigin(0.5);
+  // Antenna — mounted on a metal post behind the crate, not free-floating
+  const rAntPost = scene.add.rectangle(24, -8, 3, 22, 0x5a7080, 1);
+  const rAntenna = scene.add.line(0, 0, 24, -18, 40, -74, 0xe1bb73, 1).setStrokeStyle(2.5, 0xe1bb73, 1);
+  const rAntTip = scene.add.circle(40, -74, 1.8, 0xe1bb73, 1);
+  // Side carry handle (hint of portability)
+  const rHandle = scene.add.rectangle(-44, -14, 14, 3, 0x8aacba, 0.7);
   radio.add([
-    scene.add.ellipse(0, 24, 108, 14, 0x000000, 0.12),
-    scene.add.rectangle(0, 0, 82, 52, 0x334149, 1).setStrokeStyle(3, 0xe1bb73, 0.18),
-    scene.add.rectangle(-10, 2, 34, 16, 0x162128, 1),
-    scene.add.circle(24, -4, 4, 0xc7dce3, 1),
-    scene.add.line(0, 0, 18, -20, 34, -76, 0xe1bb73, 1).setStrokeStyle(3, 0xe1bb73, 1),
-    scene.add.rectangle(-20, -18, 18, 4, 0x72858f, 0.9),
+    rCrateShadow, rCrate, rCrateGrain,
+    rBodyShadow, rBody, rFace, rGrille, rGrilleDots,
+    rKnob, rKnobMark, rLed, rPlate, rPlateTxt,
+    rAntPost, rAntenna, rAntTip, rHandle,
   ]);
-  scene.radioGlow = scene.add.circle(1608, 530, 18, 0xc2eef0, 0.08).setDepth(8);
+  scene.radioGlow = scene.add.circle(1606, 530, 14, 0xc2eef0, 0.12).setDepth(8);
 
+  // === Valve wheel on a rusted pipe stub ===
   const wheel = scene.add.container(2172, 556).setDepth(10);
+  // Pipe stub coming out of the ground (sells that there's something to "remove it from")
+  const vwGroundShadow = scene.add.ellipse(2, 28, 96, 14, 0x000000, 0.35);
+  const vwPipeStub = scene.add.rectangle(0, 22, 22, 28, 0x3a3028, 1).setStrokeStyle(2, 0x1a1008, 1);
+  const vwPipeFlange = scene.add.rectangle(0, 10, 36, 8, 0x5a4a3a, 1).setStrokeStyle(1, 0x1a1008, 0.9);
+  const vwPipeBolts = scene.add.graphics();
+  vwPipeBolts.fillStyle(0xa0906a, 0.8);
+  [-14, -4, 4, 14].forEach((ox) => vwPipeBolts.fillCircle(ox, 10, 1.3));
+  // Valve body (spindle sticking up)
+  const vwSpindle = scene.add.rectangle(0, 0, 4, 24, 0x4a3a24, 1);
+  // Wheel itself — bigger, with 4 spokes
+  const vwRim = scene.add.circle(0, -6, 26, 0x8b6b48, 0).setStrokeStyle(5, 0xc39d68, 1);
+  const vwRimHi = scene.add.circle(-4, -10, 22, 0xe4c088, 0).setStrokeStyle(2, 0xe4c088, 0.55);
+  const vwHub = scene.add.circle(0, -6, 7, 0xc39d68, 1).setStrokeStyle(1, 0x5a3a20, 0.8);
+  const vwHubDot = scene.add.circle(0, -6, 2.5, 0x2a1a08, 1);
+  const vwSpokeA = scene.add.rectangle(0, -6, 5, 46, 0xc39d68, 1);
+  const vwSpokeB = scene.add.rectangle(0, -6, 46, 5, 0xc39d68, 1);
   wheel.add([
-    scene.add.ellipse(0, 22, 92, 14, 0x000000, 0.1),
-    scene.add.circle(0, 0, 24, 0x8b6b48, 0).setStrokeStyle(5, 0xc39d68, 1),
-    scene.add.circle(0, 0, 6, 0xc39d68, 1),
-    scene.add.rectangle(0, 0, 6, 34, 0xc39d68, 1),
-    scene.add.rectangle(0, 0, 34, 6, 0xc39d68, 1),
+    vwGroundShadow, vwPipeStub, vwPipeFlange, vwPipeBolts,
+    vwSpindle, vwRim, vwRimHi, vwSpokeA, vwSpokeB, vwHub, vwHubDot,
   ]);
   scene.valveWheelVisual = wheel;
 
   const generator = scene.add.container(2780, 520).setDepth(10);
   const statusLight = scene.add.circle(96, -22, 7, 0xe3c47b, 1);
+  // Concrete pad under the generator — proper grounding
+  const genPadShadow = scene.add.ellipse(0, 102, 380, 18, 0x000000, 0.38);
+  const genPad = scene.add.rectangle(0, 86, 346, 14, 0x3a3a32, 1).setStrokeStyle(2, 0x1a1a14, 0.7);
+  const genPadLip = scene.add.rectangle(0, 79, 346, 4, 0x5a5a50, 0.55);
+  // Bolts anchoring generator to pad
+  const genAnchors = scene.add.graphics();
+  genAnchors.fillStyle(0x7a8a94, 0.85);
+  [-140, -64, 64, 140].forEach((bx) => {
+    genAnchors.fillCircle(bx, 84, 2.5);
+  });
+  generator.add([genPadShadow, genPad, genPadLip, genAnchors]);
   generator.add([
     scene.add.ellipse(0, 80, 332, 34, 0x000000, 0.18),
     scene.add.rectangle(0, 22, 306, 18, 0x1f252a, 1),
@@ -678,41 +765,92 @@ function createKeeperNpc(scene) {
 }
 
 function createWreckPlank(scene) {
-  const plank = scene.add.container(2400, 576).setDepth(9);
-  // Wet sand pool beneath
-  const wetSand = scene.add.ellipse(0, 14, 130, 12, 0x3a4a50, 0.55);
-  // Main board body — weathered, angled as if tossed ashore
-  const boardShadow = scene.add.rectangle(3, 4, 116, 22, 0x000000, 0.5).setAngle(-6);
-  const board = scene.add.rectangle(0, 0, 110, 18, 0x5a3a22, 1)
-    .setStrokeStyle(2, 0x2a1a0a, 1).setAngle(-6);
-  // Plank seams
-  const seamGfx = scene.add.graphics();
-  seamGfx.lineStyle(1, 0x2a1a0a, 0.75);
-  seamGfx.beginPath(); seamGfx.moveTo(-48, -2); seamGfx.lineTo(50, 8); seamGfx.strokePath();
-  seamGfx.beginPath(); seamGfx.moveTo(-48, 6); seamGfx.lineTo(50, 16); seamGfx.strokePath();
-  // Splintered end (right side)
-  const splinterA = scene.add.triangle(56, -2, 0, -6, 10, 2, -2, 6, 0x5a3a22, 1).setAngle(-6);
-  const splinterB = scene.add.triangle(52, 6, 0, -4, 8, 4, -2, 6, 0x4a2f1a, 1).setAngle(-6);
-  // Faded painted letters "…РАССВ…" (partial, salt-bleached)
-  const paintBg = scene.add.rectangle(0, 0, 78, 10, 0xe0d4b0, 0.25).setAngle(-6);
+  const plank = scene.add.container(2400, 586).setDepth(9);
+  // Tide pool / wet sand halo under the debris
+  const wetSand = scene.add.ellipse(0, 14, 160, 18, 0x1e3440, 0.6);
+  const wetSheen = scene.add.ellipse(-10, 10, 80, 5, 0x8aacba, 0.25);
+  // Broken-end irregular board — drawn as a Graphics polygon (not a clean rectangle).
+  const plankGfx = scene.add.graphics();
+  const plankPoints = [
+    [-66, -10], [-40, -12], [-12, -10], [22, -12], [50, -8],
+    [58, -2], [52, 2], [60, 6], [56, 10], [40, 12], [14, 10],
+    [-16, 12], [-44, 10], [-60, 6], [-66, -2],
+  ];
+  // Shadow
+  plankGfx.fillStyle(0x000000, 0.5);
+  plankGfx.beginPath();
+  plankGfx.moveTo(plankPoints[0][0] + 3, plankPoints[0][1] + 5);
+  for (let i = 1; i < plankPoints.length; i += 1) {
+    plankGfx.lineTo(plankPoints[i][0] + 3, plankPoints[i][1] + 5);
+  }
+  plankGfx.closePath(); plankGfx.fillPath();
+  // Main body
+  plankGfx.fillStyle(0x5a3a22, 1);
+  plankGfx.lineStyle(2, 0x2a1a0a, 1);
+  plankGfx.beginPath();
+  plankGfx.moveTo(plankPoints[0][0], plankPoints[0][1]);
+  for (let i = 1; i < plankPoints.length; i += 1) {
+    plankGfx.lineTo(plankPoints[i][0], plankPoints[i][1]);
+  }
+  plankGfx.closePath(); plankGfx.fillPath(); plankGfx.strokePath();
+  // Wood grain (horizontal lines along the board, broken into segments so they feel organic)
+  plankGfx.lineStyle(1, 0x2a1a0a, 0.55);
+  [-5, 0, 5].forEach((oy, idx) => {
+    plankGfx.beginPath();
+    plankGfx.moveTo(-60, oy);
+    plankGfx.lineTo(-20, oy + (idx === 0 ? -1 : idx === 2 ? 1.5 : 0.5));
+    plankGfx.lineTo(20, oy + (idx === 0 ? 1 : idx === 2 ? -0.5 : 1));
+    plankGfx.lineTo(52, oy);
+    plankGfx.strokePath();
+  });
+  // Lighter weather-bleached top stripe
+  plankGfx.fillStyle(0x7a5a3a, 0.35);
+  plankGfx.fillRect(-58, -9, 114, 3);
+  plankGfx.setRotation((-5 * Math.PI) / 180);
+  // Splintered broken ends (jagged triangles on each side)
+  const splinterGfx = scene.add.graphics();
+  splinterGfx.fillStyle(0x4a2f1a, 1);
+  [[-66, -10, -78, -4, -66, 2], [-66, 2, -80, 8, -60, 6]].forEach((pts) => {
+    splinterGfx.fillTriangle(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5]);
+  });
+  [[58, -2, 70, -10, 62, 4], [60, 6, 74, 10, 56, 12]].forEach((pts) => {
+    splinterGfx.fillTriangle(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5]);
+  });
+  splinterGfx.setRotation((-5 * Math.PI) / 180);
+  // Painted plate on top — mounted slightly inset so it reads as "painted on the wood"
+  const paintBg = scene.add.rectangle(0, -1, 78, 14, 0xd4c29a, 0.38).setAngle(-5)
+    .setStrokeStyle(1, 0x8a6a3a, 0.35);
+  const paintChip = scene.add.rectangle(26, -3, 10, 4, 0x5a3a22, 0.6).setAngle(-8);
   const paintText = scene.add.text(0, -1, "…РАССВ…", {
-    fontFamily: "Georgia, serif", fontSize: "11px", color: "#e6ddc4",
-    fontStyle: "bold", letterSpacing: 1,
-  }).setOrigin(0.5).setAngle(-6).setAlpha(0.82);
-  // Rusted nail
-  const nail = scene.add.circle(34, -4, 1.6, 0x5a4a3a, 1);
-  // Seaweed stuck to the plank
-  const weedA = scene.add.ellipse(-38, 4, 14, 4, 0x2a4a2a, 0.78).setAngle(12);
-  const weedB = scene.add.ellipse(-24, 10, 10, 3, 0x2a4a2a, 0.72).setAngle(-8);
-  plank.add([wetSand, boardShadow, board, seamGfx, splinterA, splinterB, paintBg, paintText, nail, weedA, weedB]);
-  // Subtle idle bob as if the tide touches it
+    fontFamily: "Georgia, serif", fontSize: "12px", color: "#3a2a10",
+    fontStyle: "bold", letterSpacing: 2,
+  }).setOrigin(0.5).setAngle(-5);
+  // Rusted nails
+  const nailA = scene.add.circle(-40, -3, 1.8, 0x2a1a0a, 1).setStrokeStyle(1, 0x6a4020, 0.6);
+  const nailB = scene.add.circle(34, -4, 1.8, 0x2a1a0a, 1).setStrokeStyle(1, 0x6a4020, 0.6);
+  // Rust stains from nails
+  const rustGfx = scene.add.graphics();
+  rustGfx.fillStyle(0x6a3020, 0.55);
+  rustGfx.fillCircle(-40, 3, 3); rustGfx.fillCircle(34, 4, 3);
+  // Seaweed draped across
+  const weedA = scene.add.ellipse(-32, 8, 22, 5, 0x2a4a2a, 0.82).setAngle(14);
+  const weedB = scene.add.ellipse(-18, 12, 16, 4, 0x2a4a2a, 0.76).setAngle(-8);
+  const weedC = scene.add.ellipse(22, 10, 18, 4, 0x2a4a2a, 0.72).setAngle(8);
+  plank.add([wetSand, wetSheen, plankGfx, splinterGfx, paintBg, paintChip, paintText, nailA, nailB, rustGfx, weedA, weedB, weedC]);
+  // Subtle idle bob (tide touch)
   scene.tweens.add({
-    targets: plank, y: 578, duration: 2800, yoyo: true, repeat: -1, ease: "sine.inOut",
+    targets: plank, y: 588, duration: 2800, yoyo: true, repeat: -1, ease: "sine.inOut",
+  });
+  // Gentle sheen shimmer
+  scene.tweens.add({
+    targets: wetSheen, alpha: 0.4, duration: 1600, yoyo: true, repeat: -1, ease: "sine.inOut",
   });
 }
 
 function createShoreForeground(scene) {
   createWreckPlank(scene);
+
+  // Layered rock clusters — each rock now has a light top + crack lines + wet base
   const rocks = [
     [1360, 602, 160, 34, 0x1f2428],
     [1450, 606, 230, 50, 0x23292d],
@@ -720,12 +858,96 @@ function createShoreForeground(scene) {
     [2420, 606, 248, 46, 0x1f262a],
     [2860, 610, 238, 48, 0x20272c],
   ];
-
   rocks.forEach(([x, y, width, height, color]) => {
+    // Wet shadow under the rock
+    scene.add.ellipse(x, y + 4, width + 12, 10, 0x000000, 0.35).setDepth(7);
+    // Main rock body
     scene.add.ellipse(x, y, width, height, color, 0.96).setDepth(8);
+    // Damp underside stripe
+    scene.add.ellipse(x, y + height * 0.18, width * 0.88, height * 0.35, 0x101418, 0.7).setDepth(8);
+    // Top highlight
+    scene.add.ellipse(x - width * 0.1, y - height * 0.25, width * 0.55, height * 0.28, 0x3a4a50, 0.5).setDepth(8);
+    // Crack lines
+    const crackGfx = scene.add.graphics().setDepth(8);
+    crackGfx.lineStyle(1, 0x0a0e12, 0.55);
+    crackGfx.beginPath();
+    crackGfx.moveTo(x - width * 0.2, y - height * 0.05);
+    crackGfx.lineTo(x - width * 0.05, y + height * 0.15);
+    crackGfx.lineTo(x + width * 0.12, y - height * 0.05);
+    crackGfx.strokePath();
+    // Moss specks
+    const mossGfx = scene.add.graphics().setDepth(8);
+    mossGfx.fillStyle(0x2a4a2a, 0.65);
+    for (let i = 0; i < 6; i += 1) {
+      mossGfx.fillCircle(
+        x + (Math.random() - 0.5) * width * 0.7,
+        y + (Math.random() - 0.5) * height * 0.5,
+        0.8 + Math.random() * 1.2
+      );
+    }
   });
 
+  // Wet sand sheen bands between props (replaces the old lonely strips)
   scene.add.rectangle(1208, 594, 184, 5, 0x253037, 0.26).setDepth(8);
   scene.add.rectangle(2750, 592, 268, 6, 0x253037, 0.28).setDepth(8);
   scene.add.rectangle(1178, 590, 122, 5, 0x253037, 0.2).setDepth(6);
+
+  // === Set dressing between props — fills empty stretches of shore ===
+
+  // Tide pool near the hatch
+  scene.add.ellipse(1500, 592, 92, 10, 0x2a4a5a, 0.45).setDepth(7);
+  scene.add.ellipse(1496, 590, 48, 3, 0x8aacba, 0.35).setDepth(7);
+
+  // Seaweed clusters
+  [[1676, 596, 0.9], [2030, 596, 1.1], [2250, 596, 0.8], [2540, 596, 1.0], [2960, 596, 0.9]].forEach(([sx, sy, scale]) => {
+    const g = scene.add.graphics().setDepth(8);
+    g.fillStyle(0x1d3a2a, 0.82);
+    g.fillEllipse(sx, sy, 28 * scale, 6 * scale);
+    g.fillStyle(0x2a4a2e, 0.75);
+    g.fillEllipse(sx - 6 * scale, sy - 2, 18 * scale, 4 * scale);
+    g.fillStyle(0x335a3a, 0.55);
+    g.fillEllipse(sx + 4 * scale, sy + 1, 14 * scale, 3 * scale);
+  });
+
+  // Driftwood between radio and valve
+  const driftwood = scene.add.container(1790, 594).setDepth(9);
+  driftwood.add([
+    scene.add.ellipse(3, 4, 64, 6, 0x000000, 0.4),
+    scene.add.rectangle(0, 0, 58, 6, 0x6a4a2a, 1).setStrokeStyle(1, 0x2a1a0a, 0.85).setAngle(6),
+    scene.add.triangle(-30, 0, 0, -3, -10, 3, 0, 3, 0x5a3a22, 1).setAngle(6),
+    scene.add.triangle(30, 0, 0, -3, 10, 3, 0, 3, 0x5a3a22, 1).setAngle(6),
+  ]);
+
+  // Scattered small pebbles + barnacle clumps
+  const pebbleGfx = scene.add.graphics().setDepth(8);
+  [
+    [1230, 596, 5], [1246, 598, 4], [1468, 598, 3.5], [1622, 596, 4],
+    [1720, 598, 3.5], [2008, 596, 5], [2084, 598, 4], [2260, 596, 4.5],
+    [2490, 598, 5], [2570, 596, 3.5], [2690, 598, 4], [2976, 596, 5],
+  ].forEach(([px, py, pr]) => {
+    pebbleGfx.fillStyle(0x000000, 0.4);
+    pebbleGfx.fillCircle(px + 1, py + 2, pr);
+    pebbleGfx.fillStyle(0x3a4a52, 1);
+    pebbleGfx.fillCircle(px, py, pr);
+    pebbleGfx.fillStyle(0x5a7080, 0.5);
+    pebbleGfx.fillCircle(px - pr * 0.3, py - pr * 0.3, pr * 0.4);
+  });
+
+  // Coiled rope near the toolbox
+  const rope = scene.add.container(1418, 592).setDepth(9);
+  rope.add([
+    scene.add.ellipse(2, 3, 48, 8, 0x000000, 0.4),
+    scene.add.circle(0, 0, 18, 0x000000, 0).setStrokeStyle(4, 0xb89464, 0.85),
+    scene.add.circle(0, 0, 10, 0x000000, 0).setStrokeStyle(3, 0xb89464, 0.85),
+    scene.add.rectangle(14, -2, 8, 3, 0xb89464, 0.85).setAngle(24),
+  ]);
+
+  // Spray mist along the foreground base
+  for (let i = 0; i < 5; i += 1) {
+    const spray = scene.add.ellipse(1200 + i * 420, 605 + (i % 2) * 4, 140, 10, 0xd7edf3, 0.06).setDepth(7);
+    scene.tweens.add({
+      targets: spray, alpha: 0.15, duration: 2600 + i * 200,
+      yoyo: true, repeat: -1, ease: "sine.inOut",
+    });
+  }
 }
