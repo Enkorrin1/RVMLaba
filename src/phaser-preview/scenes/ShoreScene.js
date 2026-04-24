@@ -46,6 +46,8 @@ export class ShoreScene extends PreviewSceneBase {
         ? "Люк теперь связывает поверхность и нижние помещения. Но наружный холод всё ещё режет сильнее любого механизма."
         : "Башня раскрывается наружу: ветер, рация, ржавый ящик и тяжёлый генератор складываются в картину поломки."
     );
+
+    this.maybeAutoTriggerKeeperIntro();
   }
 
   update(time) {
@@ -142,6 +144,9 @@ export class ShoreScene extends PreviewSceneBase {
           "Жилая комната маяка",
           "Наружная дверь снова ведёт в тесную жилую комнату внутри башни."
         );
+        break;
+      case "keeper":
+        this.openKeeperDialogueOverlay();
         break;
       case "toolbox":
         this.session.shoreProgress.toolboxChecked = true;
@@ -763,11 +768,12 @@ export class ShoreScene extends PreviewSceneBase {
   transitionToService() {
     this.session.stage = "service";
     this.session.progressStage = "service";
+    this.session.undergroundRegion = "service";
     this.transitionToScene(
-      "service-preview",
+      "underground-preview",
       { entry: "from-shore" },
-      "Служебный уровень",
-      "Под башней начинается отдельный внутренний слой маяка: тесные помещения, пульт и дверь в тоннель."
+      "Нижние помещения",
+      "Под башней теперь единый ход: служебный отсек, тоннель, пристань и бухта связаны одной непрерывной кромкой."
     );
   }
 
@@ -816,5 +822,177 @@ export class ShoreScene extends PreviewSceneBase {
     });
 
     this.showNarration("Гул проходит по всей башне. Генератор ожил, и служебный люк у основания теперь доступен.");
+  }
+
+  maybeAutoTriggerKeeperIntro() {
+    if (!this.session.keeperDialogue) {
+      return;
+    }
+    if (this.session.keeperDialogue.introSeen) {
+      return;
+    }
+    if (this.entry !== "from-wake") {
+      return;
+    }
+
+    this.time.delayedCall(960, () => {
+      if (!this.sys?.isActive?.()) {
+        return;
+      }
+      if (this.overlayActive) {
+        return;
+      }
+      this.openKeeperDialogueOverlay();
+    });
+  }
+
+  getKeeperDialogueScript() {
+    const state = this.session.keeperDialogue ?? { met: false, introSeen: false, thanksSeen: false };
+
+    if (this.session.beats.generatorRestored && !state.thanksSeen) {
+      return {
+        kind: "thanks",
+        pages: [
+          "— Свет снова идёт. Честно, уже не верил, что успеем до рассвета.",
+          "— Завтра корабль с материка пройдёт мимо скал — теперь не в камни, а в фарватер.",
+          "— Отдохни, если надо. Я пока посижу у башни. Всё остальное, что на этом острове творится, объясню позже.",
+        ],
+      };
+    }
+
+    if (!state.introSeen) {
+      return {
+        kind: "intro",
+        pages: [
+          "— Живой. Ну и хорошо. Я уже думал, тебя штормом дальше унесёт.",
+          "— Лодку твою ночью о камни разбило в щепки. Сам тебя вытащил из полосы прибоя, затащил наверх, одеялом укрыл. Отогревался ты часа три.",
+          "— А теперь услуга за услугу. Маяк у нас вырубило вместе с бурей. Генератор под башней не пускается, один я уже не вытяну.",
+          "— Завтра сюда корабль идёт с материка. Без света напорется на скалы прямо у входа в бухту. Запусти мне свет — и живи пока здесь спокойно.",
+          "— Инструмент в ящике у башни, штурвал клапана где-то рядом валяется. Дальше уже сам разберёшься.",
+        ],
+      };
+    }
+
+    return {
+      kind: "reminder",
+      pages: [
+        "— Маяк сам себя не запустит. Ящик с инструментом у основания башни, дальше смотри по месту.",
+      ],
+    };
+  }
+
+  openKeeperDialogueOverlay() {
+    const script = this.getKeeperDialogueScript();
+    let pageIndex = 0;
+
+    const showPage = () => {
+      const page = script.pages[pageIndex];
+      const isLast = pageIndex === script.pages.length - 1;
+      const hint = isLast
+        ? "Кликни, чтобы закрыть, Esc — тоже"
+        : "Кликни, чтобы слушать дальше, Esc — прервать";
+
+      this.openOverlay("Старый смотритель", page, hint);
+
+      const portraitX = -210;
+      const portraitContainer = this.add.container(portraitX, 10);
+      const portraitBg = this.add.rectangle(0, 0, 128, 172, 0x121a20, 0.85).setStrokeStyle(2, 0xd7c087, 0.42);
+      const lanternGlow = this.add.ellipse(-18, 42, 52, 38, 0xe4b25f, 0.22);
+      const coat = this.add.rectangle(0, 28, 70, 92, 0x2b1e16, 1);
+      const scarf = this.add.rectangle(0, -2, 56, 14, 0x8a4a2c, 1);
+      const head = this.add.rectangle(0, -36, 44, 46, 0xc69a70, 1);
+      const beard = this.add.rectangle(0, -14, 42, 22, 0xd4d8d2, 1);
+      const mustache = this.add.rectangle(0, -26, 34, 5, 0xb8bcb4, 1);
+      const eyeLeft = this.add.rectangle(-9, -40, 3, 3, 0x1a1410, 1);
+      const eyeRight = this.add.rectangle(9, -40, 3, 3, 0x1a1410, 1);
+      const hatBrim = this.add.rectangle(0, -60, 72, 6, 0x1a120c, 1);
+      const hatCrown = this.add.rectangle(0, -74, 52, 22, 0x1a120c, 1);
+      const hatBand = this.add.rectangle(0, -66, 52, 5, 0x6b3820, 0.88);
+      const lantern = this.add.rectangle(-28, 40, 20, 28, 0x3a2a1c, 1).setStrokeStyle(1, 0x8a7254, 0.6);
+      const lanternPane = this.add.rectangle(-28, 40, 14, 18, 0xe4b25f, 0.82);
+      portraitContainer.add([
+        portraitBg,
+        lanternGlow,
+        coat,
+        scarf,
+        head,
+        beard,
+        mustache,
+        eyeLeft,
+        eyeRight,
+        hatBand,
+        hatCrown,
+        hatBrim,
+        lantern,
+        lanternPane,
+      ]);
+
+      const pager = this.add.text(210, 154, `${pageIndex + 1} / ${script.pages.length}`, {
+        fontFamily: "Georgia, serif",
+        fontSize: "15px",
+        color: "#c4d1d6",
+      }).setOrigin(1, 0.5);
+
+      const button = this.add.rectangle(0, 154, 220, 44, 0x1f2a32, 1).setStrokeStyle(2, 0xd7c087, 0.5);
+      const buttonText = this.add.text(0, 154, isLast ? "— Понял. Разберусь." : "— Слушаю дальше", {
+        fontFamily: "Georgia, serif",
+        fontSize: "17px",
+        color: "#f2e8d7",
+      }).setOrigin(0.5);
+
+      this.overlayContent.add([portraitContainer, pager, button, buttonText]);
+
+      this.tweens.add({
+        targets: lanternGlow,
+        alpha: 0.38,
+        scaleX: 1.15,
+        scaleY: 1.15,
+        duration: 1400,
+        yoyo: true,
+        repeat: -1,
+        ease: "sine.inOut",
+      });
+
+      this.createOverlayRectHotspot(0, 154, 240, 60, {
+        pointerover: () => button.setStrokeStyle(2, 0xe1bb73, 0.92),
+        pointerout: () => button.setStrokeStyle(2, 0xd7c087, 0.5),
+        pointerdown: () => {
+          if (isLast) {
+            this.completeKeeperDialogue(script.kind);
+            return;
+          }
+          pageIndex += 1;
+          showPage();
+        },
+      });
+    };
+
+    showPage();
+  }
+
+  completeKeeperDialogue(kind) {
+    const state = this.session.keeperDialogue;
+    if (!state) {
+      this.closeOverlay();
+      return;
+    }
+
+    state.met = true;
+
+    if (kind === "intro") {
+      state.introSeen = true;
+      this.closeOverlay();
+      this.showNarration("Смотритель кивает в сторону ящика у башни. Твоя задача — оживить генератор и вернуть маяку свет.");
+      return;
+    }
+
+    if (kind === "thanks") {
+      state.thanksSeen = true;
+      this.closeOverlay();
+      this.showNarration("Смотритель коротко благодарит и уходит в тень у стены. Маяк снова на его совести.");
+      return;
+    }
+
+    this.closeOverlay();
   }
 }

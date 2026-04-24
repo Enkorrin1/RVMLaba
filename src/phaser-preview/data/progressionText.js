@@ -43,6 +43,10 @@ export function getGeneratorObjective(session) {
 }
 
 export function getSurfaceObjective(session) {
+  if (!session.keeperDialogue?.introSeen) {
+    return "Цель: подойти к смотрителю у башни и выслушать его.";
+  }
+
   if (!session.endingUnlocked) {
     if (!session.shoreProgress.radioChecked) {
       return "Цель: осмотреть площадку у основания башни и найти следы неисправности.";
@@ -152,4 +156,37 @@ export function getBayObjective(session) {
 
 export function hasResolvedBayScene(session) {
   return session.bayProgress.campSeen && session.bayProgress.cacheOpened;
+}
+
+export function getUndergroundObjective(session) {
+  const region = session.undergroundRegion ?? "service";
+
+  if (region === "service") {
+    return getServiceObjective(session);
+  }
+  if (region === "tunnel") {
+    return getTunnelObjective(session);
+  }
+  if (region === "pier") {
+    return getPierObjective(session);
+  }
+  if (region === "bay") {
+    return getBayObjective(session);
+  }
+
+  return getServiceObjective(session);
+}
+
+export function getUndergroundRegionLabel(region) {
+  switch (region) {
+    case "tunnel":
+      return "Восточный тоннель";
+    case "pier":
+      return "Нижняя пристань";
+    case "bay":
+      return "Скрытая бухта";
+    case "service":
+    default:
+      return "Служебный уровень";
+  }
 }

@@ -29,8 +29,14 @@ export function createDefaultPreviewSession() {
       campSeen: false,
       cacheOpened: false,
     },
+    undergroundRegion: "service",
     beats: {
       generatorRestored: false,
+    },
+    keeperDialogue: {
+      met: false,
+      introSeen: false,
+      thanksSeen: false,
     },
     puzzleState: {
       toolbox: {

@@ -228,6 +228,7 @@ export function buildShoreEnvironment(scene) {
 
   createTower(scene);
   createShoreProps(scene);
+  createKeeperNpc(scene);
   createShoreForeground(scene);
 }
 
@@ -538,6 +539,90 @@ function createShoreProps(scene) {
   scene.generatorVisual = generator;
   scene.generatorStatusLight = statusLight;
   scene.generatorAmbientGlow = scene.add.ellipse(2780, 590, 320, 28, 0xe1bb73, 0.02).setDepth(8);
+}
+
+function createKeeperNpc(scene) {
+  const anchorX = 1062;
+  const anchorY = 540;
+  const shadow = scene.add.ellipse(anchorX, 590, 52, 12, 0x000000, 0.32).setDepth(9);
+  const figure = scene.add.container(anchorX, anchorY).setDepth(10);
+  const outline = scene.add.rectangle(0, 4, 46, 86, 0xe7f0f4, 0.05);
+  const coat = scene.add.rectangle(0, 6, 40, 54, 0x2b1e16, 1).setStrokeStyle(2, 0x0f0a07, 0.38);
+  const coatShadow = scene.add.rectangle(-9, 6, 14, 54, 0x120c08, 0.42);
+  const belt = scene.add.rectangle(0, 16, 38, 4, 0x141009, 0.82);
+  const buckle = scene.add.rectangle(0, 16, 8, 6, 0xb58a4b, 1);
+  const lapelLeft = scene.add.rectangle(-11, -6, 6, 22, 0x0f0806, 0.72);
+  const lapelRight = scene.add.rectangle(11, -6, 6, 22, 0x0f0806, 0.72);
+  const scarf = scene.add.rectangle(0, -10, 28, 8, 0x8a4a2c, 1).setStrokeStyle(1, 0x3a1d10, 0.62);
+  const scarfEnd = scene.add.rectangle(10, 0, 6, 16, 0x6b3820, 1);
+  const head = scene.add.rectangle(0, -28, 24, 26, 0xc69a70, 1);
+  const headShadow = scene.add.rectangle(-7, -28, 7, 26, 0x8a6a4a, 0.48);
+  const beard = scene.add.rectangle(0, -16, 22, 12, 0xd4d8d2, 1).setStrokeStyle(1, 0x8e9088, 0.46);
+  const mustache = scene.add.rectangle(0, -22, 18, 3, 0xb8bcb4, 1);
+  const eyeLeft = scene.add.rectangle(-5, -30, 2, 2, 0x1a1410, 1);
+  const eyeRight = scene.add.rectangle(5, -30, 2, 2, 0x1a1410, 1);
+  const hatBrim = scene.add.rectangle(0, -40, 40, 4, 0x1a120c, 1);
+  const hatCrown = scene.add.rectangle(0, -48, 28, 12, 0x1a120c, 1).setStrokeStyle(2, 0x090604, 0.68);
+  const hatBand = scene.add.rectangle(0, -44, 28, 3, 0x6b3820, 0.88);
+  const legLeft = scene.add.rectangle(-8, 42, 10, 24, 0x3d2718, 1);
+  const legRight = scene.add.rectangle(8, 42, 10, 24, 0x3d2718, 1);
+  const bootLeft = scene.add.rectangle(-8, 54, 12, 6, 0x140a06, 1);
+  const bootRight = scene.add.rectangle(8, 54, 12, 6, 0x140a06, 1);
+  const lanternChain = scene.add.rectangle(-18, 2, 1.5, 12, 0x8a7254, 1);
+  const lanternBody = scene.add.rectangle(-18, 14, 12, 16, 0x3a2a1c, 1).setStrokeStyle(1, 0x8a7254, 0.62);
+  const lanternGlass = scene.add.rectangle(-18, 14, 8, 10, 0xe4b25f, 0.86);
+  const lanternGlow = scene.add.ellipse(-18, 14, 36, 26, 0xe4b25f, 0.18);
+  figure.add([
+    outline,
+    coat,
+    coatShadow,
+    belt,
+    buckle,
+    lapelLeft,
+    lapelRight,
+    scarf,
+    scarfEnd,
+    head,
+    headShadow,
+    beard,
+    mustache,
+    eyeLeft,
+    eyeRight,
+    hatBand,
+    hatCrown,
+    hatBrim,
+    legLeft,
+    legRight,
+    bootLeft,
+    bootRight,
+    lanternChain,
+    lanternBody,
+    lanternGlass,
+    lanternGlow,
+  ]);
+
+  scene.tweens.add({
+    targets: figure,
+    y: anchorY - 2,
+    duration: 2400,
+    yoyo: true,
+    repeat: -1,
+    ease: "sine.inOut",
+  });
+  scene.tweens.add({
+    targets: lanternGlow,
+    alpha: 0.32,
+    scaleX: 1.15,
+    scaleY: 1.15,
+    duration: 1600,
+    yoyo: true,
+    repeat: -1,
+    ease: "sine.inOut",
+  });
+
+  scene.keeperVisual = figure;
+  scene.keeperLanternGlow = lanternGlow;
+  scene.keeperShadow = shadow;
 }
 
 function createShoreForeground(scene) {

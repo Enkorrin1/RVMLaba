@@ -378,40 +378,151 @@ export class ServiceScene extends PreviewSceneBase {
       "Экран ожил и показывает схему маяка. Восточный тоннель отмечен красным: проход заблокирован цепью уже с другой стороны."
     );
 
-    const body = this.add.container(0, 24);
-    const frame = this.add.rectangle(0, 18, 470, 238, 0x15202a, 0.95).setStrokeStyle(3, 0x89b7c5, 0.18);
-    const monitor = this.add.rectangle(-88, -12, 180, 104, 0x0d151b, 1).setStrokeStyle(2, 0x7bc6d3, 0.24);
-    const scheme = this.add.rectangle(94, 22, 160, 142, 0x101920, 1).setStrokeStyle(2, 0xe1bb73, 0.18);
-    const leftPath = this.add.line(-88, -12, -66, -24, 22, -24, 22, 46, 0x8de0cf, 0.9).setStrokeStyle(3, 0x8de0cf, 0.9);
-    const blockedPath = this.add.line(94, 22, 36, -10, 148, -10, 148, 70, 0xd46462, 0.9).setStrokeStyle(4, 0xd46462, 0.9);
-    const blocker = this.add.circle(136, 70, 12, 0xd46462, 0.82);
-    const glow = this.add.circle(-88, -12, 46, 0x8ad5db, 0.06);
+    const body = this.add.container(0, 14);
+
+    // Monitor bezel
+    const bezel = this.add.rectangle(0, 0, 474, 240, 0x091520, 1)
+      .setStrokeStyle(2, 0x3a7a8a, 0.8);
+
+    // Header strip
+    const headerBg = this.add.rectangle(0, -106, 474, 28, 0x0c1e2c, 1);
+    const headerLabel = this.add.text(-220, -106, "СИСТЕМА МОНИТОРИНГА МАЯКА", {
+      fontFamily: "monospace", fontSize: "10px", color: "#3a9ab8",
+    }).setOrigin(0, 0.5);
+    const headerStatus = this.add.text(160, -106, "● АКТИВЕН", {
+      fontFamily: "monospace", fontSize: "10px", color: "#6de08c",
+    }).setOrigin(0, 0.5);
+
+    const gfx = this.add.graphics();
+
+    // ── Lighthouse icon (top-center) ──
+    gfx.fillStyle(0xe4b25f, 0.12);
+    gfx.fillRect(-10, -86, 20, 12);
+    gfx.lineStyle(1, 0xe4b25f, 0.7);
+    gfx.strokeRect(-10, -86, 20, 12);
+    // Tower trapezoid
+    gfx.fillStyle(0x112030, 0.9);
+    gfx.beginPath();
+    gfx.moveTo(-10, -74); gfx.lineTo(10, -74);
+    gfx.lineTo(16, -56); gfx.lineTo(-16, -56);
+    gfx.closePath(); gfx.fillPath();
+    gfx.lineStyle(1, 0x4aacbf, 0.65);
+    gfx.beginPath();
+    gfx.moveTo(-10, -74); gfx.lineTo(10, -74);
+    gfx.lineTo(16, -56); gfx.lineTo(-16, -56);
+    gfx.closePath(); gfx.strokePath();
+    // Connector line to service room
+    gfx.lineStyle(1, 0x3a7a8a, 0.5);
+    gfx.beginPath(); gfx.moveTo(0, -56); gfx.lineTo(0, -28); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(-4, -31); gfx.lineTo(0, -25); gfx.lineTo(4, -31); gfx.strokePath();
+
+    // ── Service room (center) ──
+    const RX = 0, RY = -4;
+    gfx.fillStyle(0x0d1e2c, 0.95);
+    gfx.lineStyle(2, 0x4aacbf, 0.8);
+    gfx.fillRect(RX - 42, RY - 20, 84, 40);
+    gfx.strokeRect(RX - 42, RY - 20, 84, 40);
+    // Corner tick marks
+    gfx.lineStyle(1, 0x4aacbf, 0.35);
+    gfx.beginPath(); gfx.moveTo(RX - 42, RY - 12); gfx.lineTo(RX - 42, RY - 20); gfx.lineTo(RX - 34, RY - 20); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(RX + 42, RY - 12); gfx.lineTo(RX + 42, RY - 20); gfx.lineTo(RX + 34, RY - 20); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(RX - 42, RY + 12); gfx.lineTo(RX - 42, RY + 20); gfx.lineTo(RX - 34, RY + 20); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(RX + 42, RY + 12); gfx.lineTo(RX + 42, RY + 20); gfx.lineTo(RX + 34, RY + 20); gfx.strokePath();
+
+    // ── West corridor (OPEN, cyan) ──
+    const CY = RY;
+    const CH = 18;
+    gfx.fillStyle(0x0c2230, 0.85);
+    gfx.lineStyle(1, 0x8de0cf, 0.4);
+    gfx.fillRect(-130, CY - CH / 2, 88, CH);
+    gfx.strokeRect(-130, CY - CH / 2, 88, CH);
+    // Flow arrows →
+    gfx.lineStyle(2, 0x8de0cf, 0.8);
+    [-112, -88, -64].forEach((ax) => {
+      gfx.beginPath(); gfx.moveTo(ax, CY); gfx.lineTo(ax + 10, CY); gfx.strokePath();
+      gfx.beginPath(); gfx.moveTo(ax + 4, CY - 3); gfx.lineTo(ax + 10, CY); gfx.lineTo(ax + 4, CY + 3); gfx.strokePath();
+    });
+    // West end cap (open)
+    gfx.fillStyle(0x8de0cf, 0.12);
+    gfx.fillCircle(-134, CY, 9);
+    gfx.lineStyle(2, 0x8de0cf, 0.65);
+    gfx.strokeCircle(-134, CY, 9);
+    gfx.lineStyle(2, 0x8de0cf, 0.45);
+    gfx.beginPath(); gfx.moveTo(-143, CY); gfx.lineTo(-153, CY); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(-149, CY - 3); gfx.lineTo(-155, CY); gfx.lineTo(-149, CY + 3); gfx.strokePath();
+
+    // ── East corridor (BLOCKED, red) ──
+    gfx.fillStyle(0x1e0e0e, 0.85);
+    gfx.lineStyle(1, 0xd46462, 0.5);
+    gfx.fillRect(42, CY - CH / 2, 88, CH);
+    gfx.strokeRect(42, CY - CH / 2, 88, CH);
+    // Blockade X marks
+    gfx.lineStyle(2, 0xd46462, 0.85);
+    [60, 86, 112].forEach((bx) => {
+      gfx.beginPath(); gfx.moveTo(bx - 6, CY - 5); gfx.lineTo(bx + 6, CY + 5); gfx.strokePath();
+      gfx.beginPath(); gfx.moveTo(bx + 6, CY - 5); gfx.lineTo(bx - 6, CY + 5); gfx.strokePath();
+    });
+    // East end cap (sealed)
+    gfx.fillStyle(0xd46462, 0.2);
+    gfx.fillCircle(134, CY, 9);
+    gfx.lineStyle(2, 0xd46462, 0.75);
+    gfx.strokeCircle(134, CY, 9);
+    gfx.lineStyle(2, 0xd46462, 1.0);
+    gfx.beginPath(); gfx.moveTo(129, CY - 4); gfx.lineTo(139, CY + 4); gfx.strokePath();
+    gfx.beginPath(); gfx.moveTo(139, CY - 4); gfx.lineTo(129, CY + 4); gfx.strokePath();
+
+    // ── Bottom legend strip ──
+    gfx.fillStyle(0x0c1a26, 0.9);
+    gfx.lineStyle(1, 0x1e4050, 0.6);
+    gfx.fillRect(-237, 92, 474, 26);
+    gfx.strokeRect(-237, 92, 474, 26);
+
+    // ── Labels ──
+    const lighthouseLabel = this.add.text(0, -96, "◈  ФОНАРНАЯ КОМНАТА", {
+      fontFamily: "monospace", fontSize: "9px", color: "#e4b25f",
+    }).setOrigin(0.5);
+
+    const roomLabel = this.add.text(RX, RY, "ТЕХ.\nУРОВЕНЬ", {
+      fontFamily: "monospace", fontSize: "9px", color: "#5ab4c8", align: "center",
+    }).setOrigin(0.5);
+
+    const westTitle = this.add.text(-86, CY + 20, "◀  ЗАПАДНЫЙ ПРОХОД", {
+      fontFamily: "monospace", fontSize: "9px", color: "#8de0cf",
+    }).setOrigin(0.5);
+    const westStatus = this.add.text(-86, CY + 34, "[ СВОБОДЕН ]", {
+      fontFamily: "monospace", fontSize: "9px", color: "#8de0cf",
+    }).setOrigin(0.5);
+
+    const eastTitle = this.add.text(86, CY + 20, "ВОСТОЧНЫЙ ТОННЕЛЬ  ▶", {
+      fontFamily: "monospace", fontSize: "9px", color: "#d46462",
+    }).setOrigin(0.5);
+    const eastStatus = this.add.text(86, CY + 34, "[ ЦЕПЬ / БЛОК ]", {
+      fontFamily: "monospace", fontSize: "9px", color: "#d46462",
+    }).setOrigin(0.5);
+
+    const legendLeft = this.add.text(-200, 105, "●  ЗАПАДНЫЙ: СВОБОДЕН", {
+      fontFamily: "monospace", fontSize: "9px", color: "#8de0cf",
+    }).setOrigin(0, 0.5);
+    const legendRight = this.add.text(30, 105, "⊗  ВОСТОЧНЫЙ: ЗАБЛОКИРОВАН ЦЕПЬЮ", {
+      fontFamily: "monospace", fontSize: "9px", color: "#d46462",
+    }).setOrigin(0, 0.5);
+
+    // Animated lantern glow
+    const lanternGlow = this.add.circle(0, -80, 14, 0xe4b25f, 0.06);
+
     body.add([
-      frame,
-      monitor,
-      scheme,
-      glow,
-      leftPath,
-      blockedPath,
-      blocker,
-      this.add.text(-88, 78, "Схема внутренних линий", {
-        fontFamily: "Georgia, serif",
-        fontSize: "17px",
-        color: "#dce6e9",
-      }).setOrigin(0.5),
-      this.add.text(94, 108, "Тоннель заблокирован\nс восточной стороны", {
-        fontFamily: "Georgia, serif",
-        fontSize: "18px",
-        color: "#eadcc1",
-        align: "center",
-      }).setOrigin(0.5),
+      bezel, headerBg, headerLabel, headerStatus,
+      gfx, lanternGlow,
+      lighthouseLabel, roomLabel,
+      westTitle, westStatus, eastTitle, eastStatus,
+      legendLeft, legendRight,
     ]);
     this.overlayContent.add(body);
 
     this.tweens.add({
-      targets: glow,
-      alpha: 0.18,
-      duration: 760,
+      targets: lanternGlow,
+      alpha: 0.22,
+      duration: 1400,
       yoyo: true,
       repeat: -1,
       ease: "sine.inOut",
