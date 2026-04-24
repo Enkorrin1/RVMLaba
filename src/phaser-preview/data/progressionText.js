@@ -47,6 +47,21 @@ export function getSurfaceObjective(session) {
     return "Цель: подойти к смотрителю у башни и выслушать его.";
   }
 
+  // Post-finale: the choice is binary — leave the light on (arriving inspector) or kill it
+  if (session.beats?.keeperExposed && session.keeperDialogue?.finaleSeen) {
+    return "Цель: оставить свет гореть — встретить инспектора, или спуститься в подземелье и выключить рубильник генератора. Время до зари.";
+  }
+
+  // Keeper's been exposed but player hasn't talked to him yet
+  if (session.beats?.keeperExposed && !session.keeperDialogue?.finaleSeen) {
+    return "Цель: вернуться к смотрителю с тем, что ты нашёл в тайнике.";
+  }
+
+  // Sabotage reported, need to re-investigate the cache
+  if (session.beats?.sabotageReported && !session.beats?.keeperExposed) {
+    return "Цель: спуститься в скрытую бухту и осмотреть тайник ещё раз — за крышкой сундука должен быть подпол.";
+  }
+
   if (!session.endingUnlocked) {
     if (!session.shoreProgress.radioChecked) {
       return "Цель: осмотреть площадку у основания башни и найти следы неисправности.";
@@ -154,6 +169,11 @@ export function hasResolvedPierScene(session) {
 }
 
 export function getBayObjective(session) {
+  // After the keeper has been told, come back here to find the hidden compartment
+  if (session.beats?.sabotageReported && !session.beats?.keeperExposed) {
+    return "Цель: вернуться к тайнику и осмотреть подпол под ящиком — смотритель кивал сюда не просто так.";
+  }
+
   if (!session.bayProgress.campSeen) {
     return "Цель: осмотреть потухший костёр в скрытой бухте.";
   }

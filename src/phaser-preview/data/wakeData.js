@@ -8,6 +8,8 @@ export const INVENTORY_SLOT_COUNT = 8;
 
 export const NOTE_TEXT = "Запуск резервного генератора только после замены предохранителя и открытия топливного клапана.";
 
+export const LETTER_TEXT = `«…Отец. Если это письмо дойдёт раньше меня, значит, мы снова проскочили пролив. Третий рейс на «Рассвете» подходит к концу — через четыре дня я сойду на берег и, наконец, заеду. Ветер к югу усиливается, но старпом говорит — дотянем. Обещаю, в этот раз без штормовых историй. Целую, Янис.»`;
+
 export const ITEM_DEFINITIONS = {
   battery: {
     label: "Батарея",
@@ -23,6 +25,13 @@ export const ITEM_DEFINITIONS = {
     readable: true,
     documentTitle: "Записка",
     documentText: NOTE_TEXT,
+  },
+  letter: {
+    label: "Письмо",
+    description: "Недописанный черновик с брига «Рассвет». Адресован отцу, подписан именем Янис.",
+    readable: true,
+    documentTitle: "Письмо отцу",
+    documentText: LETTER_TEXT,
   },
   screwdriver: {
     label: "Отвёртка",
@@ -115,18 +124,20 @@ export const interactables = [
   },
   {
     id: "room-door",
-    x: wakeRoomVisual.innerX + wakeRoomVisual.innerWidth - 37,
+    // Door visual is centered at x=1954, panel width 42, height 174, y-center=512.
+    // Bounding box: 1933..1975 × 425..599.
+    x: 1933,
     y: 425,
     width: 42,
     height: 174,
     hitbox: {
-      x: wakeRoomVisual.innerX + wakeRoomVisual.innerWidth - 88,
+      x: 1900,
       y: 404,
       width: 92,
       height: 196,
     },
     prompt: "Выход наружу",
-    markerAnchor: { x: wakeRoomVisual.innerX + wakeRoomVisual.innerWidth - 22, y: 414 },
+    markerAnchor: { x: 1954, y: 412 },
     interactionPriority: 3,
   },
 ];
@@ -140,7 +151,7 @@ export function createWakeSession() {
     lanternProgress: {
       mechanismChecked: false,
     },
-    drawerItems: ["battery", "note"],
+    drawerItems: ["letter", "battery", "note"],
     inventory: [],
     selectedItemId: null,
     currentHint: "A/D или стрелки для движения, W/Space для прыжка, E для взаимодействия.",

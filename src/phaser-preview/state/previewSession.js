@@ -9,6 +9,7 @@ export function createDefaultPreviewSession() {
     shoreProgress: {
       toolboxChecked: false,
       radioChecked: false,
+      wreckSeen: false,
     },
     serviceProgress: {
       logbookRead: false,
@@ -38,12 +39,17 @@ export function createDefaultPreviewSession() {
       lighthouseTried: false,
       sabotageFound: false,
       sabotageReported: false,
+      keeperExposed: false,
+      finalConfronted: false,
+      endingChoice: null,
     },
     keeperDialogue: {
       met: false,
       introSeen: false,
       thanksSeen: false,
       undergroundSent: false,
+      exposedSeen: false,
+      finaleSeen: false,
     },
     puzzleState: {
       toolbox: {

@@ -411,7 +411,16 @@ function createLanternProjector(scene) {
 }
 
 function createLanternMaintenanceProps(scene) {
-  const ladder = scene.add.container(774, 458).setDepth(8);
+  // Floor hatch where the ladder comes up — align with the ladder-down interactable center at x=776.
+  const hatchOpening = scene.add.container(776, 600).setDepth(7);
+  hatchOpening.add([
+    scene.add.rectangle(0, 0, 96, 14, 0x05090d, 1),
+    scene.add.rectangle(0, -8, 108, 6, 0x2a2218, 1).setStrokeStyle(1, 0x110c08, 0.85),
+    scene.add.rectangle(-52, -2, 6, 10, 0x3d3328, 1),
+    scene.add.rectangle(52, -2, 6, 10, 0x3d3328, 1),
+  ]);
+
+  const ladder = scene.add.container(776, 458).setDepth(8);
   ladder.add([
     scene.add.rectangle(-24, 0, 8, 292, 0x7a6c57, 1),
     scene.add.rectangle(24, 0, 8, 292, 0x7a6c57, 1),
@@ -438,38 +447,81 @@ function createLanternMaintenanceProps(scene) {
 
 function createTower(scene) {
   const tower = scene.add.container(940, 270).setDepth(4);
+  // Tower body
   tower.add([
     scene.add.ellipse(0, 358, 240, 22, 0x000000, 0.08),
     scene.add.rectangle(0, 70, 264, 548, 0xc8b08b, 1).setStrokeStyle(4, 0x665543, 0.24),
     scene.add.rectangle(-64, 70, 44, 548, 0x8c755b, 0.22),
     scene.add.rectangle(58, 70, 54, 548, 0xf0dfb9, 0.08),
+    // Lantern room cap
     scene.add.rectangle(0, -156, 320, 76, 0x364149, 1).setStrokeStyle(4, 0x192129, 0.42),
     scene.add.rectangle(0, -138, 250, 18, 0x627985, 0.9),
     scene.add.rectangle(-70, -138, 62, 26, 0x86b8c9, 0.26),
     scene.add.rectangle(70, -138, 62, 26, 0x86b8c9, 0.26),
-    scene.add.rectangle(0, 256, 132, 196, 0x463731, 1).setStrokeStyle(3, 0x1f1814, 0.36),
-    scene.add.circle(40, 258, 6, 0xe3c27d, 1),
-    scene.add.rectangle(0, 296, 120, 10, 0x2e2520, 0.26),
   ]);
 
+  // Horizontal mortar bands (decorative)
   for (let index = 0; index < 7; index += 1) {
     tower.add(scene.add.rectangle(0, -90 + index * 72, 224, 6, 0x8f7c64, 0.14));
   }
+
+  // === Entry doorway: *cut into* the tower base ===
+  // Visual extents in world coords:
+  // - Door visual center at world y = 270 + 240 = 510 (aligns with interactable center at y=510).
+  // - Bounding box 880..1000 × 419..601 → matches lighthouse-door hitbox.
+  const DOOR_LOCAL_Y = 240; // 270 + 240 = 510 world
+  // Dark arched recess (the opening cut into the wall)
+  tower.add(scene.add.rectangle(0, DOOR_LOCAL_Y, 108, 192, 0x0c0704, 1));
+  // Stone jambs flanking the opening
+  tower.add(scene.add.rectangle(-54, DOOR_LOCAL_Y, 10, 190, 0x9d8869, 1).setStrokeStyle(1, 0x4a3824, 0.8));
+  tower.add(scene.add.rectangle(54, DOOR_LOCAL_Y, 10, 190, 0x9d8869, 1).setStrokeStyle(1, 0x4a3824, 0.8));
+  // Stone lintel (with keystone suggestion)
+  tower.add(scene.add.rectangle(0, DOOR_LOCAL_Y - 88, 140, 18, 0x9d8869, 1).setStrokeStyle(1, 0x4a3824, 0.85));
+  tower.add(scene.add.rectangle(0, DOOR_LOCAL_Y - 88, 24, 22, 0xb09a7c, 1).setStrokeStyle(1, 0x4a3824, 0.8));
+  // Door leaf itself (slightly inside the opening)
+  tower.add(scene.add.rectangle(0, DOOR_LOCAL_Y + 10, 92, 168, 0x3a2c22, 1).setStrokeStyle(2, 0x16110d, 0.9));
+  // Plank seams
+  [-24, 0, 24].forEach((ox) => {
+    tower.add(scene.add.rectangle(ox, DOOR_LOCAL_Y + 10, 1.5, 160, 0x1a120b, 0.65));
+  });
+  // Iron hinges
+  tower.add(scene.add.rectangle(-40, DOOR_LOCAL_Y - 46, 18, 10, 0x211712, 1).setStrokeStyle(1, 0x080603, 0.8));
+  tower.add(scene.add.rectangle(-40, DOOR_LOCAL_Y + 66, 18, 10, 0x211712, 1).setStrokeStyle(1, 0x080603, 0.8));
+  // Door handle + keyhole
+  tower.add(scene.add.rectangle(30, DOOR_LOCAL_Y + 12, 10, 24, 0x5a421f, 1));
+  tower.add(scene.add.circle(30, DOOR_LOCAL_Y + 12, 3.5, 0xe3c27d, 1));
+  // Threshold stone on the ground
+  tower.add(scene.add.rectangle(0, DOOR_LOCAL_Y + 96, 116, 8, 0x5a4a36, 1).setStrokeStyle(1, 0x2a1f16, 0.8));
+  // Step shadow
+  tower.add(scene.add.ellipse(0, DOOR_LOCAL_Y + 102, 128, 10, 0x000000, 0.3));
 
   scene.towerLanternGlow = scene.add.ellipse(940, 112, 268, 120, 0xa8d2de, 0.05).setDepth(3);
 }
 
 function createShoreProps(scene) {
+  // Concrete well around the service hatch — a proper recessed mount,
+  // not a floating ellipse on top of the ground.
   const hatchHousing = scene.add.container(1178, 590).setDepth(8);
-  const hatchPlate = scene.add.ellipse(0, 0, 112, 30, 0x344047, 1).setStrokeStyle(4, 0xb99964, 0.24);
-  const hatchRing = scene.add.ellipse(0, 0, 72, 18, 0x12191e, 1).setStrokeStyle(3, 0x66757d, 0.2);
-  const hatchHandle = scene.add.rectangle(0, -2, 8, 14, 0x7a867f, 0.92).setStrokeStyle(2, 0xd2b47b, 0.12);
+  const hatchShadow = scene.add.ellipse(0, 14, 140, 18, 0x000000, 0.32);
+  const hatchWell = scene.add.ellipse(0, 6, 146, 40, 0x1f2932, 1).setStrokeStyle(3, 0x5a6a74, 0.7);
+  // Concrete rim with bolts
+  const hatchRimOuter = scene.add.ellipse(0, 2, 128, 34, 0x4d4034, 1).setStrokeStyle(3, 0x211913, 0.4);
+  const hatchRimInner = scene.add.ellipse(0, 2, 108, 26, 0x2a241c, 1);
+  const boltGfx = scene.add.graphics();
+  boltGfx.fillStyle(0xa0906a, 0.85);
+  for (let i = 0; i < 8; i += 1) {
+    const ang = (i / 8) * Math.PI * 2;
+    boltGfx.fillCircle(Math.cos(ang) * 56, 2 + Math.sin(ang) * 14, 2);
+  }
+  // The hatch plate itself (the moving lid)
+  const hatchPlate = scene.add.ellipse(0, 0, 96, 26, 0x344047, 1).setStrokeStyle(4, 0xb99964, 0.4);
+  const hatchPlateRim = scene.add.ellipse(0, 0, 96, 26, 0x0f161c, 0).setStrokeStyle(1, 0x1a2028, 1);
+  const hatchRing = scene.add.ellipse(0, 0, 60, 16, 0x12191e, 1).setStrokeStyle(3, 0x66757d, 0.3);
+  const hatchRingHi = scene.add.ellipse(0, -3, 40, 4, 0x8aacba, 0.25);
+  const hatchHandle = scene.add.rectangle(0, -2, 8, 14, 0x7a867f, 0.92).setStrokeStyle(2, 0xd2b47b, 0.3);
   hatchHousing.add([
-    scene.add.ellipse(0, 10, 126, 18, 0x000000, 0.08),
-    scene.add.ellipse(0, 2, 126, 34, 0x4d4034, 1).setStrokeStyle(3, 0x211913, 0.24),
-    hatchPlate,
-    hatchRing,
-    hatchHandle,
+    hatchShadow, hatchWell, hatchRimOuter, hatchRimInner, boltGfx,
+    hatchPlate, hatchPlateRim, hatchRing, hatchRingHi, hatchHandle,
     scene.add.rectangle(0, 6, 30, 4, 0x3d474d, 0.58),
   ]);
   scene.hatchPlateVisual = hatchPlate;
@@ -625,7 +677,42 @@ function createKeeperNpc(scene) {
   scene.keeperShadow = shadow;
 }
 
+function createWreckPlank(scene) {
+  const plank = scene.add.container(2400, 576).setDepth(9);
+  // Wet sand pool beneath
+  const wetSand = scene.add.ellipse(0, 14, 130, 12, 0x3a4a50, 0.55);
+  // Main board body — weathered, angled as if tossed ashore
+  const boardShadow = scene.add.rectangle(3, 4, 116, 22, 0x000000, 0.5).setAngle(-6);
+  const board = scene.add.rectangle(0, 0, 110, 18, 0x5a3a22, 1)
+    .setStrokeStyle(2, 0x2a1a0a, 1).setAngle(-6);
+  // Plank seams
+  const seamGfx = scene.add.graphics();
+  seamGfx.lineStyle(1, 0x2a1a0a, 0.75);
+  seamGfx.beginPath(); seamGfx.moveTo(-48, -2); seamGfx.lineTo(50, 8); seamGfx.strokePath();
+  seamGfx.beginPath(); seamGfx.moveTo(-48, 6); seamGfx.lineTo(50, 16); seamGfx.strokePath();
+  // Splintered end (right side)
+  const splinterA = scene.add.triangle(56, -2, 0, -6, 10, 2, -2, 6, 0x5a3a22, 1).setAngle(-6);
+  const splinterB = scene.add.triangle(52, 6, 0, -4, 8, 4, -2, 6, 0x4a2f1a, 1).setAngle(-6);
+  // Faded painted letters "…РАССВ…" (partial, salt-bleached)
+  const paintBg = scene.add.rectangle(0, 0, 78, 10, 0xe0d4b0, 0.25).setAngle(-6);
+  const paintText = scene.add.text(0, -1, "…РАССВ…", {
+    fontFamily: "Georgia, serif", fontSize: "11px", color: "#e6ddc4",
+    fontStyle: "bold", letterSpacing: 1,
+  }).setOrigin(0.5).setAngle(-6).setAlpha(0.82);
+  // Rusted nail
+  const nail = scene.add.circle(34, -4, 1.6, 0x5a4a3a, 1);
+  // Seaweed stuck to the plank
+  const weedA = scene.add.ellipse(-38, 4, 14, 4, 0x2a4a2a, 0.78).setAngle(12);
+  const weedB = scene.add.ellipse(-24, 10, 10, 3, 0x2a4a2a, 0.72).setAngle(-8);
+  plank.add([wetSand, boardShadow, board, seamGfx, splinterA, splinterB, paintBg, paintText, nail, weedA, weedB]);
+  // Subtle idle bob as if the tide touches it
+  scene.tweens.add({
+    targets: plank, y: 578, duration: 2800, yoyo: true, repeat: -1, ease: "sine.inOut",
+  });
+}
+
 function createShoreForeground(scene) {
+  createWreckPlank(scene);
   const rocks = [
     [1360, 602, 160, 34, 0x1f2428],
     [1450, 606, 230, 50, 0x23292d],

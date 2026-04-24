@@ -609,7 +609,13 @@ export class PreviewSceneBase extends Phaser.Scene {
 
     this.keys.close.on("down", () => {
       resumePreviewAudio();
-      this.closeOverlay();
+      if (this.overlayActive) {
+        this.closeOverlay();
+      } else if (this.pauseMenuActive) {
+        this.closePauseMenu();
+      } else {
+        this.openPauseMenu();
+      }
     });
 
     this.keys.inventory.on("down", () => {
@@ -1130,7 +1136,23 @@ export class PreviewSceneBase extends Phaser.Scene {
     }
 
     if (objectiveNode) {
-      objectiveNode.textContent = this.getObjectiveText();
+      const newText = this.getObjectiveText();
+      const prevText = objectiveNode.textContent;
+      objectiveNode.textContent = newText;
+      // Flash + slide animation only when the objective actually changed.
+      if (prevText && prevText !== newText) {
+        objectiveNode.style.transition = "opacity 260ms ease-out, transform 260ms ease-out, color 260ms ease-out";
+        objectiveNode.style.opacity = "0";
+        objectiveNode.style.transform = "translateY(-6px)";
+        objectiveNode.style.color = "#f3deb1";
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            objectiveNode.style.opacity = "1";
+            objectiveNode.style.transform = "translateY(0)";
+            setTimeout(() => { objectiveNode.style.color = ""; }, 900);
+          });
+        });
+      }
     }
 
     if (hintNode) {
@@ -1929,7 +1951,10 @@ export class PreviewSceneBase extends Phaser.Scene {
     if (this.hideMessageEvent) {
       this.time.removeEvent(this.hideMessageEvent);
     }
-    this.hideMessageEvent = this.time.delayedCall(2800, () => {
+    // Scale display time with text length so long narrations don't vanish mid-read.
+    // Baseline: 2400ms, plus ~55ms per character, capped at 14000ms.
+    const readTimeMs = Math.min(14000, Math.max(2400, 2400 + wrapped.length * 55));
+    this.hideMessageEvent = this.time.delayedCall(readTimeMs, () => {
       this.dialogueBubble?.setVisible(false);
       this.messagePanel?.setVisible(false);
     });
@@ -1954,6 +1979,89 @@ export class PreviewSceneBase extends Phaser.Scene {
     this.transitionText?.setVisible(false).setAlpha(0);
   }
 
+  openPauseMenu() {
+    if (this.pauseMenuActive || this.sceneTransitionActive) return;
+    this.pauseMenuActive = true;
+
+    const cam = this.cameras.main;
+    const w = cam.width;
+    const h = cam.height;
+    const layer = this.add.container(0, 0).setScrollFactor(0).setDepth(300);
+    const backdrop = this.add.rectangle(w * 0.5, h * 0.5, w, h, 0x02060a, 0.86).setScrollFactor(0);
+    const panel = this.add.rectangle(w * 0.5, h * 0.5, 440, 360, 0x141a20, 0.98)
+      .setScrollFactor(0).setStrokeStyle(2, 0xd7c087, 0.65);
+    const goldLine = this.add.rectangle(w * 0.5, h * 0.5 - 130, 380, 1, 0xd7c087, 0.7).setScrollFactor(0);
+    const title = this.add.text(w * 0.5, h * 0.5 - 150, "ПАУЗА", {
+      fontFamily: "Georgia, serif", fontSize: "28px", color: "#f4ead5",
+      fontStyle: "bold", letterSpacing: 4,
+    }).setOrigin(0.5).setScrollFactor(0);
+    const subtitle = this.add.text(w * 0.5, h * 0.5 - 108, "«Последний смотритель»", {
+      fontFamily: "Georgia, serif", fontSize: "12px", color: "#d7c087", fontStyle: "italic",
+    }).setOrigin(0.5).setScrollFactor(0);
+
+    // About block (bottom)
+    const aboutTitle = this.add.text(w * 0.5, h * 0.5 + 80, "О проекте", {
+      fontFamily: "monospace", fontSize: "10px", color: "#8aacba", letterSpacing: 2,
+    }).setOrigin(0.5).setScrollFactor(0);
+    const aboutText = this.add.text(w * 0.5, h * 0.5 + 110,
+      "Прототип работы по дисциплине «Разработка мультимедийных приложений».\nPhaser 3 · без бандлера. Автор: Янис (из игры — это ты).",
+      {
+        fontFamily: "Georgia, serif", fontSize: "11px", color: "#a8b4bc",
+        align: "center", lineSpacing: 4,
+      }
+    ).setOrigin(0.5).setScrollFactor(0);
+
+    layer.add([backdrop, panel, goldLine, title, subtitle, aboutTitle, aboutText]);
+    this.registerUiObjects?.([backdrop, panel, goldLine, title, subtitle, aboutTitle, aboutText]);
+
+    // Buttons
+    const buttons = [
+      { label: "Продолжить", y: h * 0.5 - 60, action: () => this.closePauseMenu() },
+      { label: "Начать заново", y: h * 0.5 - 8, action: () => {
+          if (window.__LAST_KEEPER_PREVIEW_TEST_API__?.resetPreview) {
+            this.closePauseMenu();
+            window.__LAST_KEEPER_PREVIEW_TEST_API__.resetPreview();
+          } else {
+            window.location.reload();
+          }
+        } },
+      { label: "Полноэкранный режим", y: h * 0.5 + 44, action: () => { this.closePauseMenu(); this.toggleFullscreen(); } },
+    ];
+    const buttonHandlers = [];
+    buttons.forEach(({ label, y, action }) => {
+      const bg = this.add.rectangle(w * 0.5, y, 280, 36, 0x1f2a32, 1)
+        .setScrollFactor(0).setStrokeStyle(2, 0xd7c087, 0.55).setInteractive({ useHandCursor: true });
+      const txt = this.add.text(w * 0.5, y, label, {
+        fontFamily: "Georgia, serif", fontSize: "15px", color: "#f4ead5",
+      }).setOrigin(0.5).setScrollFactor(0);
+      bg.on("pointerover", () => bg.setStrokeStyle(2, 0xe1bb73, 0.95));
+      bg.on("pointerout", () => bg.setStrokeStyle(2, 0xd7c087, 0.55));
+      bg.on("pointerdown", action);
+      layer.add([bg, txt]);
+      this.registerUiObjects?.([bg, txt]);
+      buttonHandlers.push(bg);
+    });
+
+    this.tweens.add({
+      targets: layer, alpha: { from: 0, to: 1 }, duration: 220, ease: "quad.out",
+    });
+
+    this.pauseMenuLayer = layer;
+  }
+
+  closePauseMenu() {
+    if (!this.pauseMenuActive) return;
+    this.pauseMenuActive = false;
+    if (this.pauseMenuLayer) {
+      const layer = this.pauseMenuLayer;
+      this.pauseMenuLayer = null;
+      this.tweens.add({
+        targets: layer, alpha: 0, duration: 160, ease: "quad.in",
+        onComplete: () => layer.destroy(),
+      });
+    }
+  }
+
   toggleFullscreen() {
     if (!this.scale) {
       return;
@@ -1972,7 +2080,12 @@ export class PreviewSceneBase extends Phaser.Scene {
     }
   }
 
-  playSceneIntro(title, text, hold = 760) {
+  playSceneIntro(title, text, hold) {
+    // Scale hold time with text length so long narrative intros aren't cut off.
+    if (hold == null) {
+      const length = String(text ?? "").length;
+      hold = Math.min(7000, Math.max(1400, 1400 + length * 28));
+    }
     if (!this.transitionShade) {
       return;
     }
@@ -2086,51 +2199,134 @@ export class PreviewSceneBase extends Phaser.Scene {
 
   openScrewPanel({ title, description, accent, onComplete }) {
     this.openOverlay(title, description);
-    const panel = this.add.rectangle(0, 18, 390, 240, accent, 0.92).setStrokeStyle(4, 0xe3c47b, 0.24);
-    const inner = this.add.rectangle(0, 18, 260, 140, 0x202932, 0.75).setStrokeStyle(3, 0xaebfc6, 0.18);
-    const instruction = this.add.text(0, 154, "Кликай по винтам, чтобы выкрутить их по одному.", {
-      fontFamily: "Georgia, serif",
-      fontSize: "18px",
-      color: "#dde7ea",
-      align: "center",
+
+    // Frame background
+    const frame = this.add.rectangle(0, 10, 520, 260, 0x0a1218, 0.96).setStrokeStyle(2, 0x3a4a52, 0.4);
+    this.overlayContent.add(frame);
+
+    // Panel with accent-based surface + shadow
+    const panelShadow = this.add.rectangle(4, 14, 400, 240, 0x000000, 0.45);
+    const panel = this.add.rectangle(0, 10, 400, 230, accent, 0.97).setStrokeStyle(4, 0xe3c47b, 0.38);
+    // Surface texture: ribbed highlight lines + a darker "shadow" at bottom
+    const surfaceGfx = this.add.graphics();
+    surfaceGfx.fillStyle(0xffffff, 0.06);
+    surfaceGfx.fillRect(-196, -96, 392, 8);
+    surfaceGfx.fillStyle(0x000000, 0.2);
+    surfaceGfx.fillRect(-196, 110, 392, 10);
+    // Subtle grain lines
+    surfaceGfx.lineStyle(1, 0x000000, 0.14);
+    for (let y = -80; y <= 98; y += 18) {
+      surfaceGfx.beginPath(); surfaceGfx.moveTo(-196, 10 + y); surfaceGfx.lineTo(196, 10 + y); surfaceGfx.strokePath();
+    }
+    // Inner recessed window showing the mechanism underneath
+    const innerShadow = this.add.rectangle(2, 14, 268, 146, 0x000000, 0.55);
+    const inner = this.add.rectangle(0, 12, 264, 144, 0x0d1419, 0.96).setStrokeStyle(3, 0xaebfc6, 0.25);
+    // Hint of what's underneath — horizontal circuitry/wiring pattern
+    const innerTex = this.add.graphics();
+    innerTex.lineStyle(1, 0x4a5a62, 0.7);
+    for (let y = -56; y <= 56; y += 16) {
+      innerTex.beginPath(); innerTex.moveTo(-128, 12 + y); innerTex.lineTo(128, 12 + y); innerTex.strokePath();
+    }
+    innerTex.fillStyle(0xe3c47b, 0.35);
+    [[-90, -40], [60, -8], [-20, 28], [88, 44]].forEach(([ox, oy]) => {
+      innerTex.fillCircle(ox, 12 + oy, 2.4);
+    });
+    this.overlayContent.add([panelShadow, panel, surfaceGfx, innerShadow, inner, innerTex]);
+
+    // Progress pips (top-right)
+    const pipsY = -98;
+    const pips = [];
+    for (let i = 0; i < 4; i += 1) {
+      const pip = this.add.circle(132 + i * 14, pipsY, 4, 0x2a3540, 1).setStrokeStyle(1, 0x5a7080, 0.7);
+      pips.push(pip);
+      this.overlayContent.add(pip);
+    }
+    const pipsLabel = this.add.text(118, pipsY, "Винты:", {
+      fontFamily: "monospace", fontSize: "9px", color: "#d7c087",
+    }).setOrigin(1, 0.5);
+    this.overlayContent.add(pipsLabel);
+
+    const instruction = this.add.text(0, 146, "Кликай по винтам, чтобы выкрутить их по одному. Когда все четыре уйдут — крышка снимется.", {
+      fontFamily: "Georgia, serif", fontSize: "13px", color: "#dde7ea", align: "center",
+      wordWrap: { width: 460 },
     }).setOrigin(0.5);
-    this.overlayContent.add([panel, inner, instruction]);
+    this.overlayContent.add(instruction);
+
     let remaining = 4;
+    let removedCount = 0;
     const positions = [
-      [-112, -42],
-      [112, -42],
-      [-112, 78],
-      [112, 78],
+      [-130, -50],
+      [130, -50],
+      [-130, 70],
+      [130, 70],
     ];
-    positions.forEach(([x, y]) => {
+
+    positions.forEach(([x, y], idx) => {
+      // Socket well (dark recess where screw sits)
+      const socket = this.add.circle(x, y, 17, 0x0a0e10, 0.92).setStrokeStyle(2, 0x5a4a30, 0.85);
+      // Screw head with Phillips cross
       const screw = this.add.container(x, y).setSize(40, 40);
-      const plate = this.add.circle(0, 0, 14, 0xcdd6db, 1).setStrokeStyle(3, 0x667985, 0.36);
-      const slotA = this.add.rectangle(0, 0, 18, 3, 0x4d5a64, 1);
-      const slotB = this.add.rectangle(0, 0, 3, 18, 0x4d5a64, 1);
-      screw.add([plate, slotA, slotB]);
-      this.createOverlayRectHotspot(x, y, 40, 40, {
+      const plateShadow = this.add.circle(1, 1, 13, 0x000000, 0.5);
+      const plate = this.add.circle(0, 0, 13, 0xcdd6db, 1).setStrokeStyle(2, 0x667985, 0.85);
+      // Metallic gradient hint
+      const plateHi = this.add.circle(-3, -4, 8, 0xffffff, 0.2);
+      const slotA = this.add.rectangle(0, 0, 16, 3, 0x2a3540, 1);
+      const slotB = this.add.rectangle(0, 0, 3, 16, 0x2a3540, 1);
+      screw.add([plateShadow, plate, plateHi, slotA, slotB]);
+      // Ring glow on hover
+      const hoverRing = this.add.circle(x, y, 18, 0xe3c47b, 0).setStrokeStyle(2, 0xe3c47b, 0);
+      this.overlayContent.add([socket, hoverRing, screw]);
+
+      this.createOverlayRectHotspot(x, y, 44, 44, {
+        pointerover: () => { hoverRing.setStrokeStyle(2, 0xe3c47b, 0.85); },
+        pointerout: () => { hoverRing.setStrokeStyle(2, 0xe3c47b, 0); },
         pointerdown: () => {
+          if (screw._removing) return;
+          screw._removing = true;
+          hoverRing.setStrokeStyle(2, 0xe3c47b, 0);
+          // Spin in place, then lift and fade out
           this.tweens.add({
-            targets: screw,
-            y: screw.y - 42,
-            alpha: 0,
-            angle: 220,
-            duration: 260,
+            targets: screw, angle: 540, duration: 260, ease: "cubic.in",
             onComplete: () => {
-              screw.destroy();
-              remaining -= 1;
-              if (remaining === 0) {
-                this.time.delayedCall(180, () => {
-                  this.closeOverlay();
-                  onComplete();
-                  this.syncHud();
-                });
-              }
+              this.tweens.add({
+                targets: screw,
+                y: screw.y - 48,
+                x: screw.x + Phaser.Math.Between(-10, 10),
+                alpha: 0, angle: 720, duration: 280, ease: "quad.out",
+                onComplete: () => {
+                  screw.destroy();
+                  // Empty socket stays; light a highlight in it for feedback
+                  socket.setFillStyle(0x2a2018, 1);
+                  socket.setStrokeStyle(2, 0x8a6a3a, 0.6);
+                  // Advance pip
+                  if (pips[removedCount]) {
+                    pips[removedCount].setFillStyle(0x7de08f, 1);
+                    pips[removedCount].setStrokeStyle(1, 0x7de08f, 0.9);
+                  }
+                  removedCount += 1;
+                  remaining -= 1;
+                  if (remaining === 0) {
+                    // Panel slides down-off, inner window brightens
+                    this.tweens.add({ targets: inner, fillAlpha: 0, duration: 220 });
+                    this.tweens.add({
+                      targets: [panel, panelShadow, surfaceGfx],
+                      y: "+=28", alpha: 0, duration: 320, ease: "quad.in",
+                    });
+                    this.cameras.main.shake(100, 0.0014);
+                    this.time.delayedCall(340, () => {
+                      this.closeOverlay();
+                      onComplete();
+                      this.syncHud();
+                    });
+                  } else {
+                    this.cameras.main.shake(40, 0.0006);
+                  }
+                },
+              });
             },
           });
         },
       });
-      this.overlayContent.add(screw);
     });
   }
   createOverlayRectHotspot(localX, localY, width, height, handlers = {}) {

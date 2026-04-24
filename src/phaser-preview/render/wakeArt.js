@@ -151,6 +151,17 @@ export function createItemIcon(scene, itemId, x, y, kind = "inventory") {
       scene.add.rectangle(0, kind === "inventory" ? 0 : -2, kind === "inventory" ? 12 : 18, 2, 0x8d7d69, 1),
       scene.add.rectangle(0, kind === "inventory" ? 6 : 6, kind === "inventory" ? 12 : 18, 2, 0x8d7d69, 1),
     ]);
+  } else if (itemId === "letter") {
+    const w = kind === "inventory" ? 24 : 40;
+    const h = kind === "inventory" ? 18 : 30;
+    icon.add([
+      scene.add.rectangle(0, 0, w, h, 0xe6ddc4, 1).setStrokeStyle(2, 0x7a5a3a, 0.55),
+      // Fold crease
+      scene.add.rectangle(0, 0, w, 1, 0x8a6a3a, 0.55),
+      // Wax seal on the front
+      scene.add.circle(kind === "inventory" ? 6 : 10, 0, kind === "inventory" ? 3 : 5, 0xa84040, 1)
+        .setStrokeStyle(1, 0x6a2020, 0.7),
+    ]);
   } else if (itemId === "screwdriver") {
     icon.add([
       scene.add.rectangle(kind === "inventory" ? 4 : 8, 0, kind === "inventory" ? 26 : 56, kind === "inventory" ? 5 : 6, 0x61788a, 1),
@@ -371,7 +382,8 @@ function createSetDressing(scene) {
   createBed(scene, 878, GROUND_Y);
   createDesk(scene, 1208, GROUND_Y);
   createLeafPile(scene, 1482, GROUND_Y);
-  createDoor(scene, 1968, GROUND_Y);
+  createCeilingHatch(scene, 1598, wakeRoomVisual.innerY + 6);
+  createDoor(scene, 1954, GROUND_Y);
   createFootprints(scene, 1768, GROUND_Y);
   createLadder(scene, 1598, 458);
   createDeskExtras(scene, 1208, GROUND_Y);
@@ -468,13 +480,80 @@ function createLeafPile(scene, x, groundY) {
 }
 
 function createDoor(scene, x, groundY) {
+  // A cut-in-the-wall doorway:
+  //   1. outer wooden casing (trim around the opening) — SIT ON TOP OF THE INTERIOR WALL
+  //   2. deep dark recess behind, suggesting a hallway
+  //   3. the door slab itself, slightly inset
+  //   4. hardware (hinges, handle, keyhole)
+  const frameGroup = scene.add.container(x, groundY - 88).setDepth(5);
+  // The recess is the deepest layer: a tall dark slot cut into the wall.
+  const recessWide = scene.add.rectangle(0, 4, 68, 196, 0x000000, 1);
+  const recessInner = scene.add.rectangle(0, 4, 54, 184, 0x0d0806, 1);
+  // Visible soft "depth gradient" inside the recess
+  const recessGradient = scene.add.rectangle(0, 28, 48, 120, 0x1a120c, 0.55);
+  // Casing (wooden trim framing the opening) — sits proud of the wall
+  const casingLeft = scene.add.rectangle(-30, 0, 10, 204, 0x3b2f26, 1).setStrokeStyle(1, 0x16110d, 1);
+  const casingRight = scene.add.rectangle(30, 0, 10, 204, 0x3b2f26, 1).setStrokeStyle(1, 0x16110d, 1);
+  const casingTop = scene.add.rectangle(0, -98, 82, 16, 0x3b2f26, 1).setStrokeStyle(1, 0x16110d, 1);
+  const casingLintel = scene.add.rectangle(0, -108, 90, 4, 0x281e17, 1);
+  // Subtle cast shadow INSIDE the casing to sell depth
+  const shadowLeft = scene.add.rectangle(-22, 0, 4, 184, 0x000000, 0.55);
+  const shadowTop = scene.add.rectangle(0, -88, 50, 6, 0x000000, 0.55);
+  // Threshold on the floor
+  const threshold = scene.add.rectangle(0, 92, 72, 8, 0x2a1f16, 1).setStrokeStyle(1, 0x14100a, 1);
+  frameGroup.add([
+    recessWide, recessInner, recessGradient,
+    casingLeft, casingRight, casingTop, casingLintel,
+    shadowLeft, shadowTop, threshold,
+  ]);
+
   const door = scene.add.container(x, groundY - 88).setDepth(7);
-  const shadow = scene.add.ellipse(0, 96, 54, 16, 0x000000, 0.18);
-  const panel = scene.add.rectangle(0, 0, 42, 174, 0x342a23, 1).setStrokeStyle(3, 0xc39a58, 0.28);
-  const inlayA = scene.add.rectangle(0, -38, 22, 46, 0x45362c, 1).setStrokeStyle(2, 0x18130f, 0.3);
-  const inlayB = scene.add.rectangle(0, 34, 22, 46, 0x45362c, 1).setStrokeStyle(2, 0x18130f, 0.3);
-  const handle = scene.add.circle(8, 10, 4, 0xe2c47f, 1);
-  door.add([shadow, panel, inlayA, inlayB, handle]);
+  // Ground shadow beneath
+  const shadow = scene.add.ellipse(0, 98, 64, 14, 0x000000, 0.35);
+  // Door slab — inset 8px from the casing so it visually sits inside the opening
+  const panel = scene.add.rectangle(-2, 0, 44, 178, 0x3a2e25, 1).setStrokeStyle(2, 0x17110c, 1);
+  // Vertical plank seams
+  const plankSeamA = scene.add.rectangle(-14, 0, 1.5, 170, 0x1a120b, 0.75);
+  const plankSeamB = scene.add.rectangle(10, 0, 1.5, 170, 0x1a120b, 0.75);
+  // Two recessed rectangular panels
+  const inlayA = scene.add.rectangle(-2, -38, 26, 50, 0x2a1f16, 1).setStrokeStyle(1.5, 0x16110a, 1);
+  const inlayB = scene.add.rectangle(-2, 34, 26, 50, 0x2a1f16, 1).setStrokeStyle(1.5, 0x16110a, 1);
+  // Bevel highlights on inlays
+  const inlayAHi = scene.add.rectangle(-2, -46, 22, 2, 0x5a4434, 0.7);
+  const inlayBHi = scene.add.rectangle(-2, 26, 22, 2, 0x5a4434, 0.7);
+  // Iron hinges on the left side
+  const hingeTop = scene.add.rectangle(-20, -66, 12, 16, 0x1a120a, 1).setStrokeStyle(1, 0x050302, 1);
+  const hingeBtm = scene.add.rectangle(-20, 58, 12, 16, 0x1a120a, 1).setStrokeStyle(1, 0x050302, 1);
+  const hingeTopPin = scene.add.circle(-20, -66, 2, 0x6a5540, 1);
+  const hingeBtmPin = scene.add.circle(-20, 58, 2, 0x6a5540, 1);
+  // Handle plate + knob
+  const handlePlate = scene.add.rectangle(12, 10, 10, 24, 0x6e5434, 1).setStrokeStyle(1, 0x2a1f13, 1);
+  const handle = scene.add.circle(12, 10, 4, 0xe2c47f, 1).setStrokeStyle(1, 0x6a5434, 1);
+  // Keyhole under the handle
+  const keyhole = scene.add.graphics();
+  keyhole.fillStyle(0x050302, 1);
+  keyhole.fillCircle(12, 28, 2.2);
+  keyhole.fillRect(11.2, 28, 1.6, 5);
+  door.add([
+    shadow, panel, plankSeamA, plankSeamB,
+    inlayA, inlayAHi, inlayB, inlayBHi,
+    hingeTop, hingeTopPin, hingeBtm, hingeBtmPin,
+    handlePlate, handle, keyhole,
+  ]);
+}
+
+function createCeilingHatch(scene, x, ceilingY) {
+  // An opening in the ceiling above the ladder so it doesn't just poke through.
+  const hatch = scene.add.container(x, ceilingY).setDepth(3);
+  // Dark rectangular hole
+  const hole = scene.add.rectangle(0, 0, 68, 22, 0x000000, 0.92);
+  // Wooden frame around it
+  const frameTop = scene.add.rectangle(0, -14, 84, 8, 0x3b2f26, 1).setStrokeStyle(1, 0x16110d, 0.8);
+  const frameLeft = scene.add.rectangle(-38, 0, 8, 30, 0x3b2f26, 1).setStrokeStyle(1, 0x16110d, 0.8);
+  const frameRight = scene.add.rectangle(38, 0, 8, 30, 0x3b2f26, 1).setStrokeStyle(1, 0x16110d, 0.8);
+  // Light hint from above (the lantern room is brighter)
+  const lightSpill = scene.add.ellipse(0, 14, 60, 10, 0xf1d08a, 0.14);
+  hatch.add([frameTop, frameLeft, frameRight, hole, lightSpill]);
 }
 
 function createFootprints(scene, x, groundY) {

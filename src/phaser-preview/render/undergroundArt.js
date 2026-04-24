@@ -214,13 +214,59 @@ function buildBayZone(scene, offsetX, width) {
   const palette = REGION_PALETTE.bay;
   const centerX = offsetX + width * 0.5;
 
-  scene.add.rectangle(centerX, 146, width, 280, palette.ceiling, 0.94);
-  scene.add.rectangle(centerX, 230, width, 200, palette.wall, 0.4);
+  // Left section is still covered (cave roof over the camp), right section opens to sky.
+  // Partial ceiling: only over the first 900px of the region (where the camp is).
+  scene.add.rectangle(offsetX + 430, 146, 900, 280, palette.ceiling, 0.94);
+  scene.add.rectangle(offsetX + 430, 230, 900, 200, palette.wall, 0.38);
+
+  // === Sky / sea opening on the right side (cave mouth out to hidden bay) ===
+  // Pre-dawn sky gradient
+  scene.add.rectangle(offsetX + 1350, 140, 820, 280, 0x1a3448, 0.95);
+  scene.add.rectangle(offsetX + 1350, 210, 820, 140, 0x2d5068, 0.55);
+  scene.add.rectangle(offsetX + 1350, 260, 820, 60, 0x4a6e88, 0.22);
+  // Horizon line
+  scene.add.rectangle(offsetX + 1350, 430, 820, 2, 0xa0d4dc, 0.5);
+  // Distant silhouette of rocks
+  scene.add.polygon(
+    offsetX + 1080, 430,
+    [0, 20, 60, -26, 120, 16, 200, -18, 280, 12, 280, 40, 0, 40],
+    0x0f2131, 0.9
+  );
+  scene.add.polygon(
+    offsetX + 1560, 432,
+    [0, 18, 80, -34, 160, 10, 260, -22, 340, 12, 340, 40, 0, 40],
+    0x0f1d2b, 0.88
+  );
+  // Cave mouth framing (irregular rocky edge along the top where the ceiling ends)
+  const caveMouthGfx = scene.add.graphics();
+  caveMouthGfx.fillStyle(palette.ceiling, 0.94);
+  // Rocky protrusions from the ceiling into the opening
+  caveMouthGfx.beginPath();
+  caveMouthGfx.moveTo(offsetX + 880, 6);
+  caveMouthGfx.lineTo(offsetX + 880, 170);
+  caveMouthGfx.lineTo(offsetX + 902, 210);
+  caveMouthGfx.lineTo(offsetX + 936, 184);
+  caveMouthGfx.lineTo(offsetX + 972, 232);
+  caveMouthGfx.lineTo(offsetX + 1008, 196);
+  caveMouthGfx.lineTo(offsetX + 1040, 242);
+  caveMouthGfx.lineTo(offsetX + 1040, 6);
+  caveMouthGfx.closePath();
+  caveMouthGfx.fillPath();
+  // Rocky stalactites down from ceiling at the mouth
+  caveMouthGfx.fillStyle(palette.wall, 0.92);
+  [[offsetX + 920, 180, 14, 24], [offsetX + 984, 210, 12, 30], [offsetX + 1020, 188, 10, 22]].forEach(([tx, ty, tw, th]) => {
+    caveMouthGfx.fillTriangle(tx - tw * 0.5, ty, tx + tw * 0.5, ty, tx, ty + th);
+  });
+
+  // Left cliff wall (polygonal foreground rocks)
   scene.add.polygon(offsetX + 460, 454, [0, 168, 180, 48, 430, 182, 760, 70, 980, 220, 980, 320, 0, 320], 0x153240, 0.94);
+  // Right side: lower rocky shore
   scene.add.polygon(offsetX + 1240, 462, [0, 178, 160, 54, 360, 176, 720, 70, 900, 212, 900, 320, 0, 320], 0x122b39, 0.96);
+  // Sea surface (foreground)
   scene.add.rectangle(centerX, 654, width, 132, 0x08202d, 1);
   scene.add.rectangle(centerX, 632, width, 36, 0x1a657f, 0.3);
 
+  // Extra wave bands emphasising the opening
   for (let index = 0; index < 4; index += 1) {
     const band = scene.add.rectangle(offsetX + 200 + index * 420, 640 + (index % 2) * 8, 260, 5, palette.haze, 0.1);
     band.speed = 10 + index * 1.6;
@@ -229,6 +275,19 @@ function buildBayZone(scene, offsetX, width) {
     band.zoneWidth = width;
     scene.undergroundWaveBands.push(band);
   }
+  // A few extra foam bands inside the open mouth to sell the sea
+  for (let index = 0; index < 3; index += 1) {
+    const foam = scene.add.rectangle(offsetX + 1100 + index * 180, 620 + (index % 2) * 6, 160, 3, 0xc3e6ec, 0.3);
+    foam.speed = 14 + index * 1.4;
+    foam.baseWidth = foam.width;
+    foam.zoneOffset = offsetX;
+    foam.zoneWidth = width;
+    scene.undergroundWaveBands.push(foam);
+  }
+
+  // Dawn light spill across the floor near the cave mouth
+  scene.add.ellipse(offsetX + 1200, 580, 520, 60, 0xe0b88a, 0.05).setDepth(5);
+  scene.add.ellipse(offsetX + 1320, 540, 340, 180, 0xe0b88a, 0.03).setDepth(4);
 
   for (let index = 0; index < 3; index += 1) {
     const emberGlow = scene.add.circle(offsetX + 1048 + index * 6, 564 + index * 2, 24 + index * 8, palette.accent, 0.03).setDepth(7);
@@ -238,21 +297,43 @@ function buildBayZone(scene, offsetX, width) {
 }
 
 function createUndergroundGates(scene) {
-  // Visual markers where zones meet (stone arches).
+  // Stone archway frames around each region-transition door.
+  // Aligned with the actual door visuals (sealedDoor / tunnelExit / seaGate),
+  // so each door reads as *set into* a stone arch cut through a wall — not a free-floating slab.
   const gates = [
-    { x: 1800, color: 0x2a353d, accent: 0xd8ba74 },
-    { x: 3600, color: 0x2a303a, accent: 0xb0dce3 },
-    { x: 5400, color: 0x243844, accent: 0xc8844a },
+    { x: 1678, color: 0x2a353d, accent: 0xd8ba74, mortar: 0x1a232a },
+    { x: 3492, color: 0x2a303a, accent: 0xb0dce3, mortar: 0x1a1d22 },
+    { x: 5293, color: 0x243844, accent: 0xc8844a, mortar: 0x14232e },
   ];
-  gates.forEach(({ x, color, accent }) => {
-    const arch = scene.add.container(x, 400).setDepth(3);
-    arch.add([
-      scene.add.rectangle(0, 120, 16, 360, color, 0.9),
-      scene.add.rectangle(-40, 0, 22, 12, color, 0.8),
-      scene.add.rectangle(40, 0, 22, 12, color, 0.8),
-      scene.add.rectangle(0, -120, 220, 16, color, 0.88),
-      scene.add.rectangle(0, -118, 180, 4, accent, 0.22),
-    ]);
+  gates.forEach(({ x, color, accent, mortar }) => {
+    // Jambs — vertical stone pillars either side of the door opening
+    const jambLeft = scene.add.rectangle(x - 42, 520, 12, 168, color, 0.95)
+      .setStrokeStyle(2, mortar, 0.85)
+      .setDepth(3);
+    const jambRight = scene.add.rectangle(x + 42, 520, 12, 168, color, 0.95)
+      .setStrokeStyle(2, mortar, 0.85)
+      .setDepth(3);
+    // Stone lintel — horizontal block spanning across the top of the door
+    const lintel = scene.add.rectangle(x, 432, 108, 14, color, 0.95)
+      .setStrokeStyle(2, mortar, 0.85)
+      .setDepth(3);
+    // Keystone at the center of the lintel
+    const keystone = scene.add.rectangle(x, 426, 18, 22, accent, 0.45)
+      .setStrokeStyle(2, mortar, 0.85)
+      .setDepth(4);
+    // Accent band under the lintel
+    const accentStrip = scene.add.rectangle(x, 440, 96, 2, accent, 0.55).setDepth(3);
+    // Threshold stone on the floor
+    const threshold = scene.add.rectangle(x, 608, 108, 6, color, 0.9)
+      .setStrokeStyle(1, mortar, 0.9)
+      .setDepth(3);
+    // Mortar joints on the jambs
+    const jointGfx = scene.add.graphics().setDepth(3);
+    jointGfx.lineStyle(1, mortar, 0.5);
+    [462, 490, 518, 548, 578].forEach((jy) => {
+      jointGfx.beginPath(); jointGfx.moveTo(x - 50, jy); jointGfx.lineTo(x - 34, jy); jointGfx.strokePath();
+      jointGfx.beginPath(); jointGfx.moveTo(x + 34, jy); jointGfx.lineTo(x + 50, jy); jointGfx.strokePath();
+    });
   });
 }
 
@@ -294,6 +375,17 @@ function createUndergroundProps(scene) {
     scene.add.rectangle(0, -12, 46, 38, 0x20262c, 1).setStrokeStyle(2, 0x8ea4af, 0.22),
     scene.add.line(0, 0, -18, 4, 18, 4, 0xe0c27d, 1).setStrokeStyle(4, 0xe0c27d, 1),
     scene.add.rectangle(-28, -40, 18, 54, 0x4a4138, 1).setStrokeStyle(2, 0xd2b47b, 0.18),
+  ]);
+
+  // Generator killswitch cabinet (only visible visually when finaleSeen — but we always draw it dim; visibility gate is on the interactable)
+  scene.add.container(856, 520).setDepth(8).add([
+    scene.add.ellipse(0, 64, 90, 14, 0x000000, 0.3),
+    scene.add.rectangle(0, 0, 64, 96, 0x1a140c, 1).setStrokeStyle(3, 0xd46462, 0.75),
+    scene.add.rectangle(0, -28, 52, 18, 0x3a1a10, 0.95).setStrokeStyle(1, 0xd46462, 0.85),
+    scene.add.text(0, -28, "GEN · KS", { fontFamily: "monospace", fontSize: "8px", color: "#e08080" }).setOrigin(0.5),
+    scene.add.rectangle(0, 12, 14, 46, 0x080404, 1).setStrokeStyle(1, 0x5a4030, 0.85),
+    scene.add.rectangle(0, 2, 10, 22, 0x6a3a1a, 1),
+    scene.add.circle(0, -8, 5, 0xd7c087, 1).setStrokeStyle(1, 0x5a3a20, 1),
   ]);
 
   const valvePanel = scene.add.container(1221, 533).setDepth(8);

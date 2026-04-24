@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check src/phaser-preview/scenes/UndergroundScene.js)",
+      "Bash(node --check src/phaser-preview/scenes/WakeScene.js)",
+      "Bash(node --check src/phaser-preview/scenes/ShoreScene.js)",
+      "Bash(node --check src/phaser-preview/scenes/LanternScene.js)",
+      "Bash(node --check src/phaser-preview/scenes/PreviewSceneBase.js)",
+      "Bash(node --check src/phaser-preview/render/undergroundArt.js)",
+      "Bash(node --check src/phaser-preview/render/wakeArt.js)",
+      "Bash(node --check src/phaser-preview/render/towerArt.js)",
+      "Bash(node --check src/phaser-preview/data/wakeData.js)",
+      "Bash(node --check src/phaser-preview/data/towerData.js)",
+      "Bash(node --check src/phaser-preview/state/previewSession.js)"
+    ]
+  }
+}

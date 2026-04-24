@@ -39,10 +39,18 @@ export class WakeScene extends PreviewSceneBase {
     this.setupSceneChrome(interactables, (target) => this.handleInteraction(target));
 
     if (this.entry === "spawn") {
+      // First beat: a slight disorientation shake as Янис gets off the floor
+      this.cameras.main.shake(420, 0.0018);
+      this.cameras.main.flash(180, 10, 10, 14, true);
       this.playSceneIntro(
         "Жилая комната маяка",
-        "Ты приходишь в себя в тесной комнате маяка. Последнее, что помнится, это рыбацкая лодка, шторм и темнота."
+        "Шторм. Голова тяжёлая, одежда ещё мокрая, солёный привкус на губах. Ты с трудом поднимаешься с пола, держась за край кровати. Последнее, что в памяти — треск мачты, удар о камни и холодная чёрная вода."
       );
+      // Secondary narration — appears a beat later, once the intro fades.
+      this.time.delayedCall(2600, () => {
+        if (this.overlayActive || this.sceneTransitionActive) return;
+        this.showNarration("Комната чужая: кровать, следы грязи по полу, мокрые листья у стены. Кто-то сюда тебя принёс. Осмотрись — в ящике стола должно найтись то, что тебя восстановит в памяти.");
+      });
     } else {
     }
   }
@@ -79,7 +87,8 @@ export class WakeScene extends PreviewSceneBase {
     } else if (this.entry === "from-shore") {
       this.playerBody.setPosition(1760, 526);
     } else {
-      this.playerBody.setPosition(860, 526);
+      // Spawn beside the bed (bed center ~x=878), Янис поднимается рядом
+      this.playerBody.setPosition(958, 526);
     }
   }
 
@@ -169,38 +178,50 @@ export class WakeScene extends PreviewSceneBase {
       return;
     }
 
+    // Spread cards evenly across the drawer panel — never exceed its 700px width.
+    // Use tighter card widths when the drawer holds 3+ items.
+    const n = this.session.drawerItems.length;
+    const panelInner = 640;
+    const compact = n >= 3;
+    const cardW = compact ? 180 : 236;
+    const gap = compact ? 18 : 28;
+    const totalW = n * cardW + (n - 1) * gap;
+    const startX = -totalW * 0.5 + cardW * 0.5;
+
     this.session.drawerItems.forEach((itemId, index) => {
-      const cardX = this.session.drawerItems.length === 1 ? 0 : -180 + index * 360;
-      const card = this.createDrawerItemCard(itemId, cardX, 28);
+      const cardX = n === 1 ? 0 : startX + index * (cardW + gap);
+      const card = this.createDrawerItemCard(itemId, cardX, 28, { compact });
       this.overlayContent.add(card);
     });
   }
 
-  createDrawerItemCard(itemId, x, y) {
-    const cardWidth = 236;
-    const cardHeight = 174;
-    const hotspotWidth = 212;
-    const hotspotHeight = 160;
+  createDrawerItemCard(itemId, x, y, { compact = false } = {}) {
+    const cardWidth = compact ? 180 : 236;
+    const cardHeight = compact ? 160 : 174;
+    const hotspotWidth = cardWidth - 16;
+    const hotspotHeight = cardHeight - 14;
     const card = this.add.container(x, y).setSize(cardWidth, cardHeight);
     const background = this.add.rectangle(0, 0, cardWidth, cardHeight, 0x131920, 0.98).setStrokeStyle(2, 0xe1bb73, 0.24);
-    const title = this.add.text(0, -60, ITEM_DEFINITIONS[itemId].label, {
+    const wrapWidth = cardWidth - 28;
+    const title = this.add.text(0, compact ? -56 : -60, ITEM_DEFINITIONS[itemId].label, {
       fontFamily: "Georgia, serif",
-      fontSize: "22px",
+      fontSize: compact ? "18px" : "22px",
       color: "#f4ead5",
       align: "center",
-      wordWrap: { width: 190 },
+      wordWrap: { width: wrapWidth },
     }).setOrigin(0.5);
-    const icon = createItemIcon(this, itemId, 0, -8, "overlay");
-    const description = this.add.text(0, 38, ITEM_DEFINITIONS[itemId].description, {
+    const icon = createItemIcon(this, itemId, 0, compact ? -16 : -8, "overlay");
+    const description = this.add.text(0, compact ? 30 : 38, ITEM_DEFINITIONS[itemId].description, {
       fontFamily: "Georgia, serif",
-      fontSize: "14px",
+      fontSize: compact ? "11px" : "14px",
       color: "#b9cad0",
       align: "center",
-      wordWrap: { width: 188 },
+      wordWrap: { width: wrapWidth },
+      lineSpacing: 2,
     }).setOrigin(0.5);
-    const action = this.add.text(0, 68, "Кликни, чтобы забрать", {
+    const action = this.add.text(0, compact ? 66 : 68, "Кликни, чтобы забрать", {
       fontFamily: "Georgia, serif",
-      fontSize: "14px",
+      fontSize: compact ? "12px" : "14px",
       color: "#d7c087",
     }).setOrigin(0.5);
 
@@ -224,6 +245,8 @@ export class WakeScene extends PreviewSceneBase {
           this.showNarration("Записка добавлена в инвентарь. Открыть её можно через I или нижнюю панель.");
         } else if (itemId === "battery") {
           this.showNarration("Батарея добавлена в инвентарь. Позже она пригодится на служебном уровне.");
+        } else if (itemId === "letter") {
+          this.showNarration("Это твоё письмо. Имя Янис. Ты — вахтенный торгового брига «Рассвет». Кажется, шторм застал тебя в рейсе, и ты каким-то образом оказался здесь.");
         }
 
         this.time.delayedCall(150, () => this.openDrawerOverlay());
@@ -236,25 +259,49 @@ export class WakeScene extends PreviewSceneBase {
   openLeafInspectionOverlay() {
     this.openOverlay(
       "Листья у стены",
-      "Разгреби мокрые листья вручную. Можно кликать по ним или просто вести мышью с зажатой кнопкой, чтобы расчистить тайник."
+      "Мокрая палая листва сбилась в угол. Разгребай вручную — кликай по листьям или веди курсор с зажатой кнопкой."
     );
     this.overlayKind = "custom";
 
-    const ground = this.add.rectangle(0, 108, 420, 90, 0x243238, 0.5).setStrokeStyle(2, 0x6c8c8e, 0.12);
-    const baseShadow = this.add.ellipse(0, 102, 360, 38, 0x000000, 0.14);
-    const status = this.add.text(0, 154, "Разгребено: 0 / 8", {
-      fontFamily: "Georgia, serif",
-      fontSize: "18px",
-      color: "#dce6e9",
+    // Stone wall backdrop
+    const wallBack = this.add.rectangle(0, -24, 520, 160, 0x1a2028, 0.92).setStrokeStyle(2, 0x3a4a54, 0.4);
+    const wallGrain = this.add.graphics();
+    wallGrain.lineStyle(1, 0x2d3a44, 0.5);
+    for (let y = -92; y <= 48; y += 18) {
+      wallGrain.beginPath(); wallGrain.moveTo(-256, y); wallGrain.lineTo(256, y); wallGrain.strokePath();
+    }
+    wallGrain.lineStyle(1, 0x2d3a44, 0.35);
+    [-180, -92, -10, 82, 184].forEach((x) => {
+      wallGrain.beginPath(); wallGrain.moveTo(x, -100); wallGrain.lineTo(x, 56); wallGrain.strokePath();
+    });
+    // Moss-green tint at base of wall (damp streaks)
+    wallGrain.fillStyle(0x3a5a4a, 0.12);
+    [-160, -40, 110, 200].forEach((x) => {
+      wallGrain.fillRect(x - 14, 32, 28, 24);
+    });
+    this.overlayContent.add([wallBack, wallGrain]);
+
+    // Damp floor with subtle highlight band
+    const groundShadow = this.add.rectangle(0, 78, 460, 16, 0x000000, 0.28);
+    const ground = this.add.rectangle(0, 108, 460, 90, 0x1c2a30, 0.78).setStrokeStyle(2, 0x5a7a80, 0.22);
+    const groundSheen = this.add.rectangle(0, 96, 420, 6, 0x8aacba, 0.1);
+    const baseShadow = this.add.ellipse(0, 102, 400, 44, 0x000000, 0.2);
+    // Dirt flecks
+    const flecksGfx = this.add.graphics();
+    flecksGfx.fillStyle(0x3a2a1a, 0.4);
+    for (let i = 0; i < 18; i += 1) {
+      flecksGfx.fillCircle(-210 + Math.random() * 420, 88 + Math.random() * 58, 0.8 + Math.random() * 1.6);
+    }
+    // Status card
+    const statusPanel = this.add.rectangle(0, 158, 280, 26, 0x0f1419, 0.86).setStrokeStyle(1, 0x5a7a88, 0.35);
+    const status = this.add.text(0, 158, "Разгребено: 0 / 8", {
+      fontFamily: "monospace", fontSize: "15px", color: "#dce6e9", letterSpacing: 1,
     }).setOrigin(0.5);
-    const sweepHint = this.add.text(0, 178, "Кликай по листьям или веди курсор по куче с зажатой кнопкой", {
-      fontFamily: "Georgia, serif",
-      fontSize: "15px",
-      color: "#d7c087",
-      align: "center",
+    const sweepHint = this.add.text(0, 184, "Клик по листу или удерживай и веди мышью поперёк кучи", {
+      fontFamily: "Georgia, serif", fontSize: "13px", color: "#b8a468", align: "center",
       wordWrap: { width: 460 },
     }).setOrigin(0.5);
-    this.overlayContent.add([baseShadow, ground, status, sweepHint]);
+    this.overlayContent.add([groundShadow, ground, groundSheen, baseShadow, flecksGfx, statusPanel, status, sweepHint]);
 
     const leaves = [];
     const updateStatus = () => {
@@ -266,16 +313,23 @@ export class WakeScene extends PreviewSceneBase {
         return;
       }
       screwdriver.setAlpha(1);
-      screwdriverShadow.setAlpha(0.2);
+      screwdriverShadow.setAlpha(0.3);
+      screwdriverHalo.setAlpha(1);
       screwdriverLabel.setAlpha(1);
       this.tweens.add({
-        targets: screwdriver,
-        y: screwdriver.y - 8,
-        duration: 420,
-        yoyo: true,
-        repeat: -1,
-        ease: "sine.inOut",
+        targets: screwdriver, y: screwdriver.y - 8,
+        duration: 420, yoyo: true, repeat: -1, ease: "sine.inOut",
       });
+      this.tweens.add({
+        targets: screwdriverHalo, alpha: 0.35, scaleX: 1.25, scaleY: 1.25,
+        duration: 720, yoyo: true, repeat: -1, ease: "sine.inOut",
+      });
+      this.cameras.main.shake(60, 0.0006);
+      this.emitWorldPulse(
+        this.sceneInteractables.find((i) => i.id === "leaf-pile")?.x ?? 980,
+        (this.sceneInteractables.find((i) => i.id === "leaf-pile")?.y ?? 540) - 20,
+        { color: 0xe1bb73, radius: 16, scale: 2.2, duration: 560 }
+      );
     };
 
     const scatterLeaf = (leaf) => {
@@ -287,6 +341,18 @@ export class WakeScene extends PreviewSceneBase {
       const glow = leaf.getData("glow");
       if (glow) {
         glow.setFillStyle(0xe1bb73, 0.04);
+      }
+      // Spawn 3-4 tiny particle flecks that scatter and fade (dust/debris)
+      for (let i = 0; i < 3; i += 1) {
+        const speck = this.add.circle(leaf.x, leaf.y, 1.4, 0x8a6a3a, 0.7);
+        this.overlayContent.add(speck);
+        this.tweens.add({
+          targets: speck,
+          x: leaf.x + Phaser.Math.Between(-60, 60),
+          y: leaf.y + Phaser.Math.Between(-30, 40),
+          alpha: 0, duration: 340 + Math.random() * 120,
+          onComplete: () => speck.destroy(),
+        });
       }
       this.tweens.add({
         targets: leaf,
@@ -348,40 +414,46 @@ export class WakeScene extends PreviewSceneBase {
       },
     });
 
+    // Leaves with more visual variety: veined oak-like shape simulated via two overlapping ellipses and a stem
     for (let index = 0; index < 8; index += 1) {
       const leaf = this.add.container(
-        Phaser.Math.Between(-180, 180),
-        Phaser.Math.Between(-24, 58)
-      ).setAngle(Phaser.Math.Between(-36, 36));
+        Phaser.Math.Between(-190, 190),
+        Phaser.Math.Between(-18, 62)
+      ).setAngle(Phaser.Math.Between(-40, 40));
 
       const glow = this.add.ellipse(0, 0, 188, 62, 0xe1bb73, 0.04);
-      const shape = this.add.ellipse(
-        0,
-        0,
-        Phaser.Math.Between(120, 168),
-        Phaser.Math.Between(26, 42),
-        Phaser.Math.RND.pick([0x6b5234, 0x7b5b39, 0x876546, 0x56462f]),
-        0.96
-      );
+      const palette = Phaser.Math.RND.pick([
+        { body: 0x6b4a24, edge: 0x4a3010, vein: 0x352208 },
+        { body: 0x8a5930, edge: 0x5a3818, vein: 0x3a2210 },
+        { body: 0x7b4520, edge: 0x4e2a0c, vein: 0x2e1608 },
+        { body: 0x5a3a22, edge: 0x3a2212, vein: 0x221408 },
+      ]);
+      const w = Phaser.Math.Between(116, 156);
+      const h = Phaser.Math.Between(30, 42);
+      const shadow = this.add.ellipse(3, 4, w, h, 0x000000, 0.35);
+      const body = this.add.ellipse(0, 0, w, h, palette.body, 0.97);
+      const inner = this.add.ellipse(0, 0, w * 0.7, h * 0.62, palette.edge, 0.7);
+      const vein = this.add.rectangle(0, 0, w * 0.78, 1.2, palette.vein, 0.5);
+      const stem = this.add.rectangle(-w * 0.46, 0, w * 0.14, 2, palette.vein, 0.8);
+      // A wet sheen highlight on top
+      const sheen = this.add.ellipse(-w * 0.12, -h * 0.18, w * 0.44, h * 0.18, 0xb8a468, 0.12);
 
       leaf.setData("glow", glow);
       leaf.setData("removed", false);
-      leaf.add([glow, shape]);
+      leaf.add([glow, shadow, body, inner, vein, stem, sheen]);
 
       leaves.push(leaf);
       this.overlayContent.add(leaf);
     }
 
     const screwdriverShadow = this.add.ellipse(0, 82, 110, 12, 0x000000, 0);
-    const screwdriverLabel = this.add.text(0, 114, "Отвёртка найдена — кликни, чтобы забрать", {
-      fontFamily: "Georgia, serif",
-      fontSize: "16px",
-      color: "#d7c087",
-      align: "center",
+    const screwdriverHalo = this.add.circle(0, 54, 38, 0xe1bb73, 0).setAlpha(0);
+    const screwdriverLabel = this.add.text(0, 114, "Отвёртка — кликни, чтобы забрать", {
+      fontFamily: "Georgia, serif", fontSize: "15px", color: "#e8d090", align: "center",
     }).setOrigin(0.5).setAlpha(0);
     const screwdriver = createItemIcon(this, "screwdriver", 0, 54, "overlay").setAlpha(0);
 
-    this.overlayContent.add([screwdriverShadow, screwdriver, screwdriverLabel]);
+    this.overlayContent.add([screwdriverShadow, screwdriverHalo, screwdriver, screwdriverLabel]);
     this.createOverlayRectHotspot(0, 54, 180, 40, {
       pointerover: () => {
         if (screwdriver.alpha > 0) {

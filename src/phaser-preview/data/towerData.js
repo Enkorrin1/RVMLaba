@@ -21,10 +21,10 @@ export const UNDERGROUND_REGIONS = {
 export const lanternInteractables = [
   {
     id: "lantern-ladder-down",
-    x: 734,
+    x: 736,
     y: 316,
-    width: 84,
-    height: 284,
+    width: 80,
+    height: 286,
     prompt: "Лестница вниз",
     markerAnchor: { x: 776, y: 432 },
     interactionPriority: 4,
@@ -44,10 +44,11 @@ export const lanternInteractables = [
 export const shoreInteractables = [
   {
     id: "lighthouse-door",
-    x: 880,
-    y: 419,
-    width: 120,
-    height: 182,
+    // Door visual is centered at (940, 510) with opening 108×192 → bbox 886..994 × 414..606.
+    x: 886,
+    y: 414,
+    width: 108,
+    height: 186,
     prompt: "Вход в маяк",
     markerAnchor: { x: 940, y: 406 },
     interactionPriority: 1,
@@ -118,6 +119,29 @@ export const shoreInteractables = [
     interactionPriority: 6,
     visible(session) {
       return session.endingUnlocked;
+    },
+  },
+  {
+    id: "wreck-plank",
+    x: 2340,
+    y: 574,
+    width: 120,
+    height: 24,
+    prompt: "Обломок с надписью",
+    markerAnchor: { x: 2400, y: 556 },
+    interactionPriority: 2,
+  },
+  {
+    id: "wait-dawn",
+    x: 2060,
+    y: 470,
+    width: 140,
+    height: 140,
+    prompt: "Ждать рассвета",
+    markerAnchor: { x: 2130, y: 448 },
+    interactionPriority: 8,
+    visible(session) {
+      return session.keeperDialogue?.finaleSeen && !session.beats?.finalConfronted;
     },
   },
 ];
@@ -256,6 +280,19 @@ export const undergroundInteractables = [
     prompt: "Люк наверх",
     markerAnchor: { x: 1112, y: 528 },
     interactionPriority: 5,
+  },
+  {
+    id: "generator-killswitch",
+    x: 820,
+    y: 498,
+    width: 72,
+    height: 104,
+    prompt: "Рубильник генератора",
+    markerAnchor: { x: 856, y: 478 },
+    interactionPriority: 6,
+    visible(session) {
+      return session.keeperDialogue?.finaleSeen && !session.beats?.finalConfronted;
+    },
   },
   {
     id: "logbook",
